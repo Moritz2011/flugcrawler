@@ -1,0 +1,7 @@
+setup.sh
+dashboard_preview.html
+flight_data_demo.json
+crawler.log
+crawler_error.log
+__pycache__/
+*.pyc

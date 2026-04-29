@@ -1,0 +1,43 @@
+name: "✈️ Flugpreis-Crawler"
+
+on:
+  # Täglich um 08:00 Uhr (deutscher Zeit, CET/CEST berücksichtigt)
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC = 08:00 CEST (Sommerzeit, gilt für Oktober)
+
+  # Manuell auslösbar über GitHub UI (Button "Run workflow")
+  workflow_dispatch:
+
+permissions:
+  contents: write   # Damit der Bot index.html + flight_data.json zurückschreiben darf
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "📥 Repository auschecken"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Python einrichten"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: "📦 Abhängigkeiten installieren"
+        run: pip install -r requirements.txt
+
+      - name: "🔍 Crawler ausführen"
+        env:
+          PYTHONIOENCODING: utf-8
+          PYTHONUNBUFFERED: "1"
+        run: python crawler.py
+
+      - name: "💾 Ergebnisse ins Repository speichern"
+        run: |
+          git config user.name  "Flugpreis-Bot"
+          git config user.email "bot@github.com"
+          git add flight_data.json index.html
+          # Nur committen wenn sich tatsächlich etwas geändert hat
+          git diff --staged --quiet || git commit -m "🔄 Preisupdate $(date +'%d.%m.%Y %H:%M')"
+          git push
