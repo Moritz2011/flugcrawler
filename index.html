@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>✈️ Flugpreise NUE → PMI | Oktober 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f0f4f8; color: #1a202c; }
+
+    .header { background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+               color: white; padding: 32px 40px; }
+    .header h1 { font-size: 26px; font-weight: 700; }
+    .header .sub { opacity: .8; margin-top: 6px; font-size: 14px; }
+    .header .ts  { opacity: .6; margin-top: 6px; font-size: 13px; }
+
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
+
+    .best-card { background: linear-gradient(135deg, #c6f6d5, #9ae6b4);
+                  border-radius: 12px; padding: 22px 28px;
+                  border-left: 5px solid #38a169; margin-bottom: 24px; }
+    .best-label  { color: #276749; font-weight: 600; font-size: 14px; }
+    .best-price  { font-size: 42px; font-weight: 800; color: #22543d; margin: 6px 0 4px; }
+    .best-details{ color: #2f855a; font-size: 13px; }
+
+    table { width: 100%; border-collapse: collapse; background: white;
+             border-radius: 12px; overflow: hidden;
+             box-shadow: 0 2px 10px rgba(0,0,0,.08); margin-bottom: 24px; }
+    thead tr { background: #2b6cb0; color: white; }
+    th { padding: 14px 16px; text-align: left; font-size: 13px; font-weight: 600; }
+    td { padding: 14px 16px; font-size: 13px; vertical-align: middle;
+          border-bottom: 1px solid #e2e8f0; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f7fafc; }
+    .best-row td { background: #f0fff4; }
+    small { color: #718096; display: block; margin-top: 2px; }
+    .na { color: #a0aec0; font-style: italic; }
+    .badge { background: #38a169; color: white; font-size: 10px; font-weight: 700;
+              padding: 2px 8px; border-radius: 99px; display: inline-block; margin-top: 4px; }
+    .btn { display: inline-block; background: #2b6cb0; color: white;
+            padding: 7px 14px; border-radius: 6px; text-decoration: none;
+            font-size: 12px; font-weight: 500; }
+    .btn:hover { background: #2c5282; }
+
+    .chart-box { background: white; border-radius: 12px; padding: 24px;
+                  box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+    .chart-box h3 { font-size: 15px; color: #2d3748; margin-bottom: 16px; }
+    canvas { max-height: 200px; }
+
+    .footer { text-align: center; color: #a0aec0; font-size: 12px;
+               margin-top: 28px; padding-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>✈️ Flugpreise Nürnberg (NUE) → Mallorca (PMI)</h1>
+  <div class="sub">Oktober 2026 · Alle Kombinationen mit mindestens 2 Nächten</div>
+  <div class="ts">Zuletzt aktualisiert: 29.04.2026 um 19:27 Uhr</div>
+</div>
+<div class="wrap">
+  
+    <div class="best-card">
+      <div class="best-label">🏆 Günstigstes Angebot heute</div>
+      <div class="best-price">256.98 €</div>
+      <div class="best-details">
+        Do 22.10.2026 → Sa 24.10.2026
+        &nbsp;·&nbsp; 2 Nächte
+        &nbsp;·&nbsp; Hin: Ryanair
+        &nbsp;·&nbsp; Rück: Ryanair
+      </div>
+    </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Hinflug</th><th>Rückflug</th><th>Aufenthalt</th>
+        <th>Hinflug-Preis</th><th>Rückflug-Preis</th>
+        <th>Gesamt p.P.</th><th>Buchen</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr class="best-row">
+          <td>Do 22.10.2026<br><span class="badge">🏆 Bestes Angebot</span></td>
+          <td>Sa 24.10.2026</td>
+          <td>2 Nächte</td>
+          <td>60.99 €<br><small>Ryanair</small></td>
+          <td>195.99 €<br><small>Ryanair</small></td>
+          <td><strong>256.98 €</strong></td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-22*PMI.NUE.2026-10-24;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">🔍 Suchen</a></td>
+        </tr>
+        <tr>
+          <td>Do 22.10.2026<br></td>
+          <td>So 25.10.2026</td>
+          <td>3 Nächte</td>
+          <td>60.99 €<br><small>Ryanair</small></td>
+          <td><span class="na">—</span></td>
+          <td><span class="na">keine Daten</span></td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-22*PMI.NUE.2026-10-25;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">🔍 Suchen</a></td>
+        </tr>
+        <tr>
+          <td>Do 22.10.2026<br></td>
+          <td>Mo 26.10.2026</td>
+          <td>4 Nächte</td>
+          <td>60.99 €<br><small>Ryanair</small></td>
+          <td><span class="na">—</span></td>
+          <td><span class="na">keine Daten</span></td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-22*PMI.NUE.2026-10-26;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">🔍 Suchen</a></td>
+        </tr>
+        <tr>
+          <td>Fr 23.10.2026<br></td>
+          <td>So 25.10.2026</td>
+          <td>2 Nächte</td>
+          <td>79.99 €<br><small>Ryanair</small></td>
+          <td><span class="na">—</span></td>
+          <td><span class="na">keine Daten</span></td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-23*PMI.NUE.2026-10-25;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">🔍 Suchen</a></td>
+        </tr>
+        <tr>
+          <td>Fr 23.10.2026<br></td>
+          <td>Mo 26.10.2026</td>
+          <td>3 Nächte</td>
+          <td>79.99 €<br><small>Ryanair</small></td>
+          <td><span class="na">—</span></td>
+          <td><span class="na">keine Daten</span></td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-23*PMI.NUE.2026-10-26;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">🔍 Suchen</a></td>
+        </tr></tbody>
+  </table>
+  <div class="chart-box">
+    <h3>📈 Preisverlauf günstigste Kombination (letzte 30 Tage)</h3>
+    <canvas id="chart"></canvas>
+  </div>
+  <div class="footer">
+    Preise ohne Gewähr · Immer direkt beim Anbieter verifizieren · Automatisch generiert
+  </div>
+</div>
+<script>
+new Chart(document.getElementById('chart'), {
+  type: 'line',
+  data: {
+    labels: ["2026-04-29"],
+    datasets: [{
+      label: 'Günstigstes Angebot (€)',
+      data: [256.98],
+      borderColor: '#2b6cb0',
+      backgroundColor: 'rgba(43,108,176,0.08)',
+      borderWidth: 2.5,
+      pointRadius: 4,
+      fill: true,
+      tension: 0.3,
+      spanGaps: true,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: c => c.parsed.y != null ? c.parsed.y.toFixed(2) + ' €' : 'keine Daten' } }
+    },
+    scales: {
+      y: { ticks: { callback: v => v + ' €' } }
+    }
+  }
+});
+</script>
+</body>
+</html>
