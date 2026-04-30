@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 """
-Flugpreis-Crawler: NUE → PMI / PMI → NUE (Oktober 2026)
-Läuft täglich via GitHub Actions und generiert ein HTML-Dashboard (index.html).
-
-Abgedeckte Airlines: Ryanair, Eurowings, Condor
-Kombinationen: min. 2 Nächte, günstigste Kombination hervorgehoben
+Flugpreis-Crawler: NUE -> PMI / PMI -> NUE
+Kombinationen werden automatisch aus dem Reisezeitraum generiert.
 """
 
 import json
 import sys
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
-# UTF-8 Ausgabe sicherstellen (wichtig für GitHub Actions / Linux)
+# UTF-8 Ausgabe sicherstellen (wichtig fuer GitHub Actions / Linux)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
@@ -23,54 +20,74 @@ if hasattr(sys.stderr, "reconfigure"):
 try:
     import requests
 except ImportError:
-    import subprocess, sys
+    import subprocess
     subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "--quiet"])
     import requests
 
-# ─── Konfiguration ───────────────────────────────────────────────────────────
+# =============================================================================
+#  Konfiguration
+# =============================================================================
 
 SCRIPT_DIR = Path(__file__).parent
-DATA_FILE   = SCRIPT_DIR / "flight_data.json"
-DASHBOARD   = SCRIPT_DIR / "index.html"
+DATA_FILE  = SCRIPT_DIR / "flight_data.json"
+DASHBOARD  = SCRIPT_DIR / "index.html"
 
-COMBINATIONS = [
-    {"out": "2026-10-22", "ret": "2026-10-24", "nights": 2},
-    {"out": "2026-10-22", "ret": "2026-10-25", "nights": 3},
-    {"out": "2026-10-22", "ret": "2026-10-26", "nights": 4},
-    {"out": "2026-10-23", "ret": "2026-10-25", "nights": 2},
-    {"out": "2026-10-23", "ret": "2026-10-26", "nights": 3},
-]
-
-OUTBOUND_DATES = sorted(set(c["out"] for c in COMBINATIONS))
-RETURN_DATES   = sorted(set(c["ret"] for c in COMBINATIONS))
+# Reisezeitraum: fruehester Hinflug bis spaetester Rueckflug
+TRAVEL_START = date(2026, 10, 22)
+TRAVEL_END   = date(2026, 10, 26)
+MIN_NIGHTS   = 2
 
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
 }
 
-# ─── Ryanair API ─────────────────────────────────────────────────────────────
+# =============================================================================
+#  Kombinationen automatisch generieren
+# =============================================================================
 
-def fetch_ryanair(dep: str, arr: str, dates: list[str]) -> dict:
+def build_combinations():
     """
-    Fragt Ryanairs inoffizielle FareFinder-API ab.
-    Gibt ein Dict { "YYYY-MM-DD": {"price": float, "airline": str} } zurück.
+    Generiert alle Hin/Rueck-Kombinationen im Reisefenster
+    mit mindestens MIN_NIGHTS Naechten.
     """
+    combos = []
+    out = TRAVEL_START
+    while out <= TRAVEL_END:
+        ret = out + timedelta(days=MIN_NIGHTS)
+        while ret <= TRAVEL_END:
+            combos.append({
+                "out":    out.strftime("%Y-%m-%d"),
+                "ret":    ret.strftime("%Y-%m-%d"),
+                "nights": (ret - out).days,
+            })
+            ret += timedelta(days=1)
+        out += timedelta(days=1)
+    return combos
+
+COMBINATIONS   = build_combinations()
+OUTBOUND_DATES = sorted(set(c["out"] for c in COMBINATIONS))
+RETURN_DATES   = sorted(set(c["ret"] for c in COMBINATIONS))
+
+# =============================================================================
+#  Airline-APIs
+# =============================================================================
+
+def fetch_ryanair(dep, arr, dates):
     results = {}
-    for date in dates:
+    for d in dates:
         try:
             r = requests.get(
                 "https://www.ryanair.com/api/farfnd/v4/oneWayFares",
                 params={
-                    "departureAirportIataCode": dep,
-                    "arrivalAirportIataCode":   arr,
-                    "outboundDepartureDateFrom": date,
-                    "outboundDepartureDateTo":   date,
+                    "departureAirportIataCode":  dep,
+                    "arrivalAirportIataCode":    arr,
+                    "outboundDepartureDateFrom": d,
+                    "outboundDepartureDateTo":   d,
                     "currency": "EUR",
                 },
                 headers=HEADERS,
@@ -78,38 +95,40 @@ def fetch_ryanair(dep: str, arr: str, dates: list[str]) -> dict:
             )
             if r.status_code == 200:
                 for fare in r.json().get("fares", []):
-                    d = fare["outbound"]["departureDate"][:10]
-                    p = fare["outbound"]["price"]["value"]
-                    if p and p > 0:
-                        if d not in results or p < results[d]["price"]:
-                            results[d] = {"price": round(p, 2), "airline": "Ryanair"}
+                    fd = fare["outbound"]["departureDate"][:10]
+                    fp = fare["outbound"]["price"]["value"]
+                    if fp and fp > 0:
+                        if fd not in results or fp < results[fd]["price"]:
+                            results[fd] = {"price": round(fp, 2), "airline": "Ryanair"}
             time.sleep(0.5)
         except Exception as e:
-            print(f"  ⚠  Ryanair {dep}→{arr} {date}: {e}")
+            print(f"  Ryanair {dep}->{arr} {d}: {e}")
     return results
 
-# ─── Eurowings API ───────────────────────────────────────────────────────────
 
-def fetch_eurowings(dep: str, arr: str, dates: list[str]) -> dict:
-    """
-    Fragt Eurowings' Availability-Endpunkt ab.
-    """
+def fetch_eurowings(dep, arr, dates):
     results = {}
     session = requests.Session()
-    # Erst die Hauptseite aufrufen, um Session-Cookies zu setzen
+    # Session-Cookies holen
     try:
-        session.get("https://www.eurowings.com/de.html", headers=HEADERS, timeout=10)
+        session.get(
+            "https://www.eurowings.com/de.html",
+            headers=HEADERS,
+            timeout=10,
+        )
     except Exception:
         pass
 
-    for date in dates:
+    for d in dates:
+        # Versuch 1: cheapestfares-Endpunkt
         try:
             r = session.get(
-                "https://www.eurowings.com/api/ndsservices/shoppingbasket/v1.0.0/flightoffers/cheapestfares",
+                "https://www.eurowings.com/api/ndsservices/shoppingbasket/"
+                "v1.0.0/flightoffers/cheapestfares",
                 params={
                     "departureAirport": dep,
                     "arrivalAirport":   arr,
-                    "travelDate":       date,
+                    "travelDate":       d,
                     "currency":         "EUR",
                     "cabinClass":       "ECONOMY",
                     "passengerTypes":   "ADULT",
@@ -119,156 +138,224 @@ def fetch_eurowings(dep: str, arr: str, dates: list[str]) -> dict:
             )
             if r.status_code == 200:
                 for offer in r.json().get("flightOffers", []):
-                    d = (offer.get("departureDate") or "")[:10]
-                    p = (offer.get("price") or {}).get("amount")
-                    if d and p and p > 0:
-                        if d not in results or p < results[d]["price"]:
-                            results[d] = {"price": round(p, 2), "airline": "Eurowings"}
+                    fd = (offer.get("departureDate") or "")[:10]
+                    fp = (offer.get("price") or {}).get("amount")
+                    if fd and fp and fp > 0:
+                        if fd not in results or fp < results[fd]["price"]:
+                            results[fd] = {"price": round(fp, 2), "airline": "Eurowings"}
             time.sleep(0.5)
         except Exception as e:
-            print(f"  ⚠  Eurowings {dep}→{arr} {date}: {e}")
+            print(f"  Eurowings {dep}->{arr} {d}: {e}")
+
+        # Versuch 2: availability-Endpunkt als Fallback
+        if d not in results:
+            try:
+                r2 = session.get(
+                    "https://www.eurowings.com/api/v2/flightsearch/availability",
+                    params={
+                        "origin":          dep,
+                        "destination":     arr,
+                        "outboundDate":    d,
+                        "adults":          1,
+                        "currency":        "EUR",
+                    },
+                    headers={**HEADERS, "Referer": "https://www.eurowings.com/"},
+                    timeout=15,
+                )
+                if r2.status_code == 200:
+                    data = r2.json()
+                    price = (
+                        data.get("lowestFare")
+                        or data.get("cheapestFare")
+                        or (data.get("fares") or [{}])[0].get("totalPrice")
+                    )
+                    if price and float(price) > 0:
+                        results[d] = {"price": round(float(price), 2), "airline": "Eurowings"}
+                time.sleep(0.5)
+            except Exception as e:
+                print(f"  Eurowings v2 {dep}->{arr} {d}: {e}")
     return results
 
-# ─── Condor API ──────────────────────────────────────────────────────────────
 
-def fetch_condor(dep: str, arr: str, dates: list[str]) -> dict:
-    """
-    Fragt Condors Flugsuche ab.
-    """
+def fetch_condor(dep, arr, dates):
     results = {}
-    for date in dates:
+    for d in dates:
+        # Versuch 1: REST-API
         try:
             r = requests.get(
                 "https://www.condor.com/de/flugangebote/api/v1/flights",
                 params={
-                    "origin":       dep,
-                    "destination":  arr,
-                    "departureDate": date,
-                    "adults":       1,
-                    "currency":     "EUR",
+                    "origin":        dep,
+                    "destination":   arr,
+                    "departureDate": d,
+                    "adults":        1,
+                    "currency":      "EUR",
                 },
                 headers={**HEADERS, "Referer": "https://www.condor.com/"},
                 timeout=15,
             )
             if r.status_code == 200:
                 data = r.json()
-                # Condor-Antwortformat kann variieren
                 for item in data.get("flights", data.get("offers", [])):
-                    d = (item.get("departureDate") or item.get("date") or "")[:10]
-                    p = item.get("price", {}).get("amount") or item.get("totalPrice")
-                    if d and p and p > 0:
-                        if d not in results or p < results[d]["price"]:
-                            results[d] = {"price": round(float(p), 2), "airline": "Condor"}
+                    fd = (item.get("departureDate") or item.get("date") or "")[:10]
+                    fp = item.get("price", {}).get("amount") or item.get("totalPrice")
+                    if fd and fp and float(fp) > 0:
+                        if fd not in results or float(fp) < results[fd]["price"]:
+                            results[fd] = {"price": round(float(fp), 2), "airline": "Condor"}
             time.sleep(0.5)
         except Exception as e:
-            print(f"  ⚠  Condor {dep}→{arr} {date}: {e}")
+            print(f"  Condor {dep}->{arr} {d}: {e}")
     return results
 
-# ─── Preise zusammenführen ───────────────────────────────────────────────────
 
-def merge_cheapest(*dicts) -> dict:
-    """Nimmt mehrere Preis-Dicts und behält pro Datum nur den günstigsten."""
+def merge_cheapest(*dicts):
+    """Behaelt pro Datum nur den guenstigsten Preis aus mehreren Quellen."""
     merged = {}
     for d in dicts:
-        for date, info in d.items():
-            if date not in merged or info["price"] < merged[date]["price"]:
-                merged[date] = info
+        for date_str, info in d.items():
+            if date_str not in merged or info["price"] < merged[date_str]["price"]:
+                merged[date_str] = info
     return merged
 
-# ─── HTML-Dashboard ──────────────────────────────────────────────────────────
+# =============================================================================
+#  Preistrend
+# =============================================================================
+
+def get_trends(history, today):
+    """
+    Vergleicht heutige Preise mit dem letzten vorhandenen Tag.
+    Gibt { (out_date, ret_date): {"trend": "up"|"down"|"same"|None, "diff": float} } zurueck.
+    """
+    prev_days = sorted(k for k in history.keys() if k < today)
+    if not prev_days:
+        return {}
+
+    prev_day     = prev_days[-1]
+    prev_combos  = {(c["out_date"], c["ret_date"]): c for c in history[prev_day].get("combos", [])}
+    today_combos = {(c["out_date"], c["ret_date"]): c for c in history[today].get("combos", [])}
+
+    trends = {}
+    for key, tc in today_combos.items():
+        pc = prev_combos.get(key)
+        if tc.get("total") and pc and pc.get("total"):
+            diff = round(tc["total"] - pc["total"], 2)
+            if abs(diff) < 0.50:
+                trends[key] = {"trend": "same", "diff": 0.0}
+            elif diff > 0:
+                trends[key] = {"trend": "up",   "diff": diff}
+            else:
+                trends[key] = {"trend": "down",  "diff": diff}
+        else:
+            trends[key] = {"trend": None, "diff": 0.0}
+    return trends
+
+# =============================================================================
+#  HTML-Dashboard
+# =============================================================================
 
 WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
-def fmt_date(d: str) -> str:
+def fmt_date(d):
     if not d:
-        return "—"
+        return "-"
     dt = datetime.strptime(d, "%Y-%m-%d")
     return f"{WEEKDAYS_DE[dt.weekday()]} {dt.strftime('%d.%m.%Y')}"
 
-def google_flights_url(dep_date: str, ret_date: str) -> str:
+def gf_url(out, ret):
     return (
         f"https://www.google.com/travel/flights#flt="
-        f"NUE.PMI.{dep_date}*PMI.NUE.{ret_date};c:EUR;e:1;sd:1;t:f"
+        f"NUE.PMI.{out}*PMI.NUE.{ret};c:EUR;e:1;sd:1;t:f"
     )
 
-def generate_dashboard(history: dict, today: str):
+def trend_badge(t_info):
+    if not t_info or t_info["trend"] is None:
+        return ""
+    t = t_info["trend"]
+    d = abs(t_info["diff"])
+    if t == "down":
+        return f'<span class="trend down">&#8595; {d:.2f} &euro;</span>'
+    if t == "up":
+        return f'<span class="trend up">&#8593; {d:.2f} &euro;</span>'
+    return '<span class="trend same">&#8594;</span>'
+
+def generate_dashboard(history, today):
     today_data = history.get(today, {})
     combos     = today_data.get("combos", [])
     best       = today_data.get("best")
     ts         = today_data.get("timestamp", "")
-    ts_display = datetime.fromisoformat(ts).strftime("%d.%m.%Y um %H:%M Uhr") if ts else "—"
+    ts_display = datetime.fromisoformat(ts).strftime("%d.%m.%Y um %H:%M Uhr") if ts else "-"
+    trends     = get_trends(history, today)
 
-    # Preisverlauf (letzte 30 Tage)
-    hist_dates = sorted(history.keys())[-30:]
+    hist_dates   = sorted(history.keys())[-30:]
     chart_labels = json.dumps(hist_dates)
     chart_values = json.dumps([
         history[d]["best"]["total"] if history[d].get("best") else None
         for d in hist_dates
     ])
 
-    # Tabellenzeilen
     rows = ""
     for c in combos:
-        is_best   = best and c["out_date"] == best["out_date"] and c["ret_date"] == best["ret_date"]
-        row_cls   = ' class="best-row"' if is_best else ""
-        badge     = '<span class="badge">🏆 Bestes Angebot</span>' if is_best else ""
-        out_p     = f'{c["out_price"]:.2f} €<br><small>{c["out_airline"]}</small>' if c["out_price"] else '<span class="na">—</span>'
-        ret_p     = f'{c["ret_price"]:.2f} €<br><small>{c["ret_airline"]}</small>' if c["ret_price"] else '<span class="na">—</span>'
-        total     = f'<strong>{c["total"]:.2f} €</strong>' if c["total"] else '<span class="na">keine Daten</span>'
-        book_url  = google_flights_url(c["out_date"], c["ret_date"])
+        is_best = best and c["out_date"] == best["out_date"] and c["ret_date"] == best["ret_date"]
+        row_cls = ' class="best-row"' if is_best else ""
+        badge   = '<span class="badge">Bestes Angebot</span>' if is_best else ""
+        t_info  = trends.get((c["out_date"], c["ret_date"]))
+
+        out_p  = (f'{c["out_price"]:.2f} &euro;<br><small>{c["out_airline"]}</small>'
+                  if c["out_price"] else '<span class="na">-</span>')
+        ret_p  = (f'{c["ret_price"]:.2f} &euro;<br><small>{c["ret_airline"]}</small>'
+                  if c["ret_price"] else '<span class="na">-</span>')
+        total  = (f'<strong>{c["total"]:.2f} &euro;</strong> {trend_badge(t_info)}'
+                  if c["total"] else '<span class="na">keine Daten</span>')
 
         rows += f"""
         <tr{row_cls}>
           <td>{fmt_date(c["out_date"])}<br>{badge}</td>
           <td>{fmt_date(c["ret_date"])}</td>
-          <td>{c["nights"]} Nächte</td>
+          <td>{c["nights"]} N&auml;chte</td>
           <td>{out_p}</td>
           <td>{ret_p}</td>
           <td>{total}</td>
-          <td><a href="{book_url}" target="_blank" class="btn">🔍 Suchen</a></td>
+          <td><a href="{gf_url(c["out_date"], c["ret_date"])}" target="_blank" class="btn">Suchen</a></td>
         </tr>"""
 
     best_card = ""
     if best:
+        t_best = trends.get((best["out_date"], best["ret_date"]))
         best_card = f"""
-    <div class="best-card">
-      <div class="best-label">🏆 Günstigstes Angebot heute</div>
-      <div class="best-price">{best["total"]:.2f} €</div>
-      <div class="best-details">
-        {fmt_date(best["out_date"])} → {fmt_date(best["ret_date"])}
-        &nbsp;·&nbsp; {best["nights"]} Nächte
-        &nbsp;·&nbsp; Hin: {best["out_airline"]}
-        &nbsp;·&nbsp; Rück: {best["ret_airline"]}
-      </div>
-    </div>"""
+  <div class="best-card">
+    <div class="best-label">G&uuml;nstigstes Angebot heute</div>
+    <div class="best-price">{best["total"]:.2f} &euro; {trend_badge(t_best)}</div>
+    <div class="best-details">
+      {fmt_date(best["out_date"])} &rarr; {fmt_date(best["ret_date"])}
+      &nbsp;&middot;&nbsp; {best["nights"]} N&auml;chte
+      &nbsp;&middot;&nbsp; Hin: {best["out_airline"]}
+      &nbsp;&middot;&nbsp; R&uuml;ck: {best["ret_airline"]}
+    </div>
+  </div>"""
 
     html = f"""<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>✈️ Flugpreise NUE → PMI | Oktober 2026</title>
+  <title>Flugpreise NUE &rarr; PMI | Oktober 2026</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #f0f4f8; color: #1a202c; }}
-
-    .header {{ background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+    .header {{ background: linear-gradient(135deg, #1a365d, #2b6cb0);
                color: white; padding: 32px 40px; }}
     .header h1 {{ font-size: 26px; font-weight: 700; }}
     .header .sub {{ opacity: .8; margin-top: 6px; font-size: 14px; }}
     .header .ts  {{ opacity: .6; margin-top: 6px; font-size: 13px; }}
-
     .wrap {{ max-width: 1000px; margin: 0 auto; padding: 28px 20px; }}
-
     .best-card {{ background: linear-gradient(135deg, #c6f6d5, #9ae6b4);
                   border-radius: 12px; padding: 22px 28px;
                   border-left: 5px solid #38a169; margin-bottom: 24px; }}
     .best-label  {{ color: #276749; font-weight: 600; font-size: 14px; }}
     .best-price  {{ font-size: 42px; font-weight: 800; color: #22543d; margin: 6px 0 4px; }}
     .best-details{{ color: #2f855a; font-size: 13px; }}
-
     table {{ width: 100%; border-collapse: collapse; background: white;
              border-radius: 12px; overflow: hidden;
              box-shadow: 0 2px 10px rgba(0,0,0,.08); margin-bottom: 24px; }}
@@ -287,20 +374,23 @@ def generate_dashboard(history: dict, today: str):
             padding: 7px 14px; border-radius: 6px; text-decoration: none;
             font-size: 12px; font-weight: 500; }}
     .btn:hover {{ background: #2c5282; }}
-
+    .trend {{ font-size: 12px; font-weight: 700; padding: 2px 7px;
+              border-radius: 4px; margin-left: 6px; vertical-align: middle; }}
+    .trend.down {{ background: #c6f6d5; color: #276749; }}
+    .trend.up   {{ background: #fed7d7; color: #9b2c2c; }}
+    .trend.same {{ background: #e2e8f0; color: #718096; }}
     .chart-box {{ background: white; border-radius: 12px; padding: 24px;
                   box-shadow: 0 2px 10px rgba(0,0,0,.08); }}
     .chart-box h3 {{ font-size: 15px; color: #2d3748; margin-bottom: 16px; }}
     canvas {{ max-height: 200px; }}
-
     .footer {{ text-align: center; color: #a0aec0; font-size: 12px;
                margin-top: 28px; padding-bottom: 8px; }}
   </style>
 </head>
 <body>
 <div class="header">
-  <h1>✈️ Flugpreise Nürnberg (NUE) → Mallorca (PMI)</h1>
-  <div class="sub">Oktober 2026 · Alle Kombinationen mit mindestens 2 Nächten</div>
+  <h1>Flugpreise N&uuml;rnberg (NUE) &rarr; Mallorca (PMI)</h1>
+  <div class="sub">Oktober 2026 &middot; Alle Kombinationen mit mindestens {MIN_NIGHTS} N&auml;chten</div>
   <div class="ts">Zuletzt aktualisiert: {ts_display}</div>
 </div>
 <div class="wrap">
@@ -308,19 +398,19 @@ def generate_dashboard(history: dict, today: str):
   <table>
     <thead>
       <tr>
-        <th>Hinflug</th><th>Rückflug</th><th>Aufenthalt</th>
-        <th>Hinflug-Preis</th><th>Rückflug-Preis</th>
+        <th>Hinflug</th><th>R&uuml;ckflug</th><th>Aufenthalt</th>
+        <th>Hinflug-Preis</th><th>R&uuml;ckflug-Preis</th>
         <th>Gesamt p.P.</th><th>Buchen</th>
       </tr>
     </thead>
     <tbody>{rows}</tbody>
   </table>
   <div class="chart-box">
-    <h3>📈 Preisverlauf günstigste Kombination (letzte 30 Tage)</h3>
+    <h3>Preisverlauf g&uuml;nstigste Kombination (letzte 30 Tage)</h3>
     <canvas id="chart"></canvas>
   </div>
   <div class="footer">
-    Preise ohne Gewähr · Immer direkt beim Anbieter verifizieren · Automatisch generiert
+    Preise ohne Gew&auml;hr &middot; Direkt beim Anbieter verifizieren &middot; Automatisch generiert
   </div>
 </div>
 <script>
@@ -329,7 +419,7 @@ new Chart(document.getElementById('chart'), {{
   data: {{
     labels: {chart_labels},
     datasets: [{{
-      label: 'Günstigstes Angebot (€)',
+      label: 'Guenstigstes Angebot (EUR)',
       data: {chart_values},
       borderColor: '#2b6cb0',
       backgroundColor: 'rgba(43,108,176,0.08)',
@@ -337,60 +427,62 @@ new Chart(document.getElementById('chart'), {{
       pointRadius: 4,
       fill: true,
       tension: 0.3,
-      spanGaps: true,
+      spanGaps: true
     }}]
   }},
   options: {{
     responsive: true,
     plugins: {{
       legend: {{ display: false }},
-      tooltip: {{ callbacks: {{ label: c => c.parsed.y != null ? c.parsed.y.toFixed(2) + ' €' : 'keine Daten' }} }}
+      tooltip: {{ callbacks: {{ label: c => c.parsed.y != null ? c.parsed.y.toFixed(2) + ' EUR' : 'keine Daten' }} }}
     }},
     scales: {{
-      y: {{ ticks: {{ callback: v => v + ' €' }} }}
+      y: {{ ticks: {{ callback: v => v + ' EUR' }} }}
     }}
   }}
 }});
 </script>
 </body>
 </html>"""
+
     with open(DASHBOARD, "w", encoding="utf-8") as f:
         f.write(html)
 
-# ─── Hauptprogramm ───────────────────────────────────────────────────────────
+# =============================================================================
+#  Hauptprogramm
+# =============================================================================
 
 def run():
     print(f"\n{'='*55}")
-    print(f"  ✈  Flugpreis-Crawler  |  {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    print(f"  Flugpreis-Crawler  |  {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    print(f"  Kombinationen: {len(COMBINATIONS)} | Hinflugdaten: {OUTBOUND_DATES} | Rueckflugdaten: {RETURN_DATES}")
     print(f"{'='*55}")
 
-    # Hinflug NUE → PMI
-    print("\n📡  Ryanair NUE → PMI ...")
+    print("\n[1/6] Ryanair NUE -> PMI ...")
     out_ryanair   = fetch_ryanair("NUE", "PMI", OUTBOUND_DATES)
-    print(f"    → {len(out_ryanair)} Daten gefunden")
+    print(f"      -> {len(out_ryanair)} Ergebnis(se)")
 
-    print("📡  Eurowings NUE → PMI ...")
+    print("[2/6] Eurowings NUE -> PMI ...")
     out_eurowings = fetch_eurowings("NUE", "PMI", OUTBOUND_DATES)
-    print(f"    → {len(out_eurowings)} Daten gefunden")
+    print(f"      -> {len(out_eurowings)} Ergebnis(se)")
 
-    print("📡  Condor NUE → PMI ...")
+    print("[3/6] Condor NUE -> PMI ...")
     out_condor    = fetch_condor("NUE", "PMI", OUTBOUND_DATES)
-    print(f"    → {len(out_condor)} Daten gefunden")
+    print(f"      -> {len(out_condor)} Ergebnis(se)")
 
-    # Rückflug PMI → NUE
-    print("\n📡  Ryanair PMI → NUE ...")
+    print("[4/6] Ryanair PMI -> NUE ...")
     ret_ryanair   = fetch_ryanair("PMI", "NUE", RETURN_DATES)
-    print(f"    → {len(ret_ryanair)} Daten gefunden")
+    print(f"      -> {len(ret_ryanair)} Ergebnis(se)")
 
-    print("📡  Eurowings PMI → NUE ...")
+    print("[5/6] Eurowings PMI -> NUE ...")
     ret_eurowings = fetch_eurowings("PMI", "NUE", RETURN_DATES)
-    print(f"    → {len(ret_eurowings)} Daten gefunden")
+    print(f"      -> {len(ret_eurowings)} Ergebnis(se)")
 
-    print("📡  Condor PMI → NUE ...")
+    print("[6/6] Condor PMI -> NUE ...")
     ret_condor    = fetch_condor("PMI", "NUE", RETURN_DATES)
-    print(f"    → {len(ret_condor)} Daten gefunden")
+    print(f"      -> {len(ret_condor)} Ergebnis(se)")
 
-    # Günstigste Preise je Datum
+    # Guenstigster Preis je Datum aus allen Quellen
     outbound = merge_cheapest(out_ryanair, out_eurowings, out_condor)
     returns  = merge_cheapest(ret_ryanair, ret_eurowings, ret_condor)
 
@@ -411,14 +503,13 @@ def run():
             "total":       total,
         })
 
-    priced  = sorted([c for c in combos if c["total"]], key=lambda x: x["total"])
+    priced   = sorted([c for c in combos if c["total"]], key=lambda x: x["total"])
     unpriced = [c for c in combos if not c["total"]]
-    combos  = priced + unpriced
+    combos   = priced + unpriced
+    best     = priced[0] if priced else None
+    today    = datetime.now().strftime("%Y-%m-%d")
 
-    best = priced[0] if priced else None
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    # Verlaufsdaten laden und ergänzen
+    # Verlaufsdaten laden & aktualisieren
     history = {}
     if DATA_FILE.exists():
         with open(DATA_FILE, encoding="utf-8") as f:
@@ -435,15 +526,18 @@ def run():
 
     generate_dashboard(history, today)
 
-    print("\n" + "─"*55)
-    print(f"✅  Daten gespeichert  →  {DATA_FILE.name}")
-    print(f"✅  Dashboard erzeugt  →  {DASHBOARD.name}")
+    print(f"\n{'='*55}")
+    print(f"  Daten gespeichert  ->  {DATA_FILE.name}")
+    print(f"  Dashboard erzeugt  ->  {DASHBOARD.name}")
     if best:
-        print(f"\n🏆  Bestes Angebot: {best['out_date']} → {best['ret_date']}  =  {best['total']:.2f} €")
-        print(f"    ({best['out_airline']} hin · {best['ret_airline']} rück · {best['nights']} Nächte)")
+        print(f"\n  Bestes Angebot: {best['out_date']} -> {best['ret_date']}"
+              f"  =  {best['total']:.2f} EUR")
+        print(f"  ({best['out_airline']} hin / {best['ret_airline']} rueck"
+              f" / {best['nights']} Naechte)")
     else:
-        print("\n⚠   Keine Preise gefunden – APIs möglicherweise noch nicht verfügbar für diesen Zeitraum.")
-    print("─"*55 + "\n")
+        print("\n  Keine Preise gefunden (ggf. noch nicht buchbar).")
+    print(f"{'='*55}\n")
+
 
 if __name__ == "__main__":
     try:
