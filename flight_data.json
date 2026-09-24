@@ -11088,5 +11088,80 @@
       "total": 192.38
     },
     "timestamp": "2026-09-23T10:20:47.258681"
+  },
+  "2026-09-24": {
+    "combos": [
+      {
+        "out_date": "2026-10-22",
+        "ret_date": "2026-10-26",
+        "nights": 4,
+        "out_price": 14.99,
+        "out_airline": "Ryanair",
+        "ret_price": 177.39,
+        "ret_airline": "Ryanair",
+        "total": 192.38
+      },
+      {
+        "out_date": "2026-10-23",
+        "ret_date": "2026-10-26",
+        "nights": 3,
+        "out_price": 31.99,
+        "out_airline": "Ryanair",
+        "ret_price": 177.39,
+        "ret_airline": "Ryanair",
+        "total": 209.38
+      },
+      {
+        "out_date": "2026-10-24",
+        "ret_date": "2026-10-26",
+        "nights": 2,
+        "out_price": 33.99,
+        "out_airline": "Ryanair",
+        "ret_price": 177.39,
+        "ret_airline": "Ryanair",
+        "total": 211.38
+      },
+      {
+        "out_date": "2026-10-22",
+        "ret_date": "2026-10-24",
+        "nights": 2,
+        "out_price": 14.99,
+        "out_airline": "Ryanair",
+        "ret_price": 223.99,
+        "ret_airline": "Ryanair",
+        "total": 238.98
+      },
+      {
+        "out_date": "2026-10-22",
+        "ret_date": "2026-10-25",
+        "nights": 3,
+        "out_price": 14.99,
+        "out_airline": "Ryanair",
+        "ret_price": 252.06,
+        "ret_airline": "Ryanair",
+        "total": 267.05
+      },
+      {
+        "out_date": "2026-10-23",
+        "ret_date": "2026-10-25",
+        "nights": 2,
+        "out_price": 31.99,
+        "out_airline": "Ryanair",
+        "ret_price": 252.06,
+        "ret_airline": "Ryanair",
+        "total": 284.05
+      }
+    ],
+    "best": {
+      "out_date": "2026-10-22",
+      "ret_date": "2026-10-26",
+      "nights": 4,
+      "out_price": 14.99,
+      "out_airline": "Ryanair",
+      "ret_price": 177.39,
+      "ret_airline": "Ryanair",
+      "total": 192.38
+    },
+    "timestamp": "2026-09-24T10:35:39.109009"
   }
 }
