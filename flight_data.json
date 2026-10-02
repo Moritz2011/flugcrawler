@@ -11688,5 +11688,80 @@
       "total": 175.45
     },
     "timestamp": "2026-10-01T11:54:29.852565"
+  },
+  "2026-10-02": {
+    "combos": [
+      {
+        "out_date": "2026-10-22",
+        "ret_date": "2026-10-26",
+        "nights": 4,
+        "out_price": 14.99,
+        "out_airline": "Ryanair",
+        "ret_price": 162.4,
+        "ret_airline": "Ryanair",
+        "total": 177.39
+      },
+      {
+        "out_date": "2026-10-23",
+        "ret_date": "2026-10-26",
+        "nights": 3,
+        "out_price": 31.99,
+        "out_airline": "Ryanair",
+        "ret_price": 162.4,
+        "ret_airline": "Ryanair",
+        "total": 194.39
+      },
+      {
+        "out_date": "2026-10-24",
+        "ret_date": "2026-10-26",
+        "nights": 2,
+        "out_price": 50.99,
+        "out_airline": "Ryanair",
+        "ret_price": 162.4,
+        "ret_airline": "Ryanair",
+        "total": 213.39
+      },
+      {
+        "out_date": "2026-10-22",
+        "ret_date": "2026-10-25",
+        "nights": 3,
+        "out_price": 14.99,
+        "out_airline": "Ryanair",
+        "ret_price": 214.94,
+        "ret_airline": "Ryanair",
+        "total": 229.93
+      },
+      {
+        "out_date": "2026-10-23",
+        "ret_date": "2026-10-25",
+        "nights": 2,
+        "out_price": 31.99,
+        "out_airline": "Ryanair",
+        "ret_price": 214.94,
+        "ret_airline": "Ryanair",
+        "total": 246.93
+      },
+      {
+        "out_date": "2026-10-22",
+        "ret_date": "2026-10-24",
+        "nights": 2,
+        "out_price": 14.99,
+        "out_airline": "Ryanair",
+        "ret_price": 280.99,
+        "ret_airline": "Ryanair",
+        "total": 295.98
+      }
+    ],
+    "best": {
+      "out_date": "2026-10-22",
+      "ret_date": "2026-10-26",
+      "nights": 4,
+      "out_price": 14.99,
+      "out_airline": "Ryanair",
+      "ret_price": 162.4,
+      "ret_airline": "Ryanair",
+      "total": 177.39
+    },
+    "timestamp": "2026-10-02T11:26:16.596691"
   }
 }
