@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Flugpreis-Crawler: NUE -> PMI / PMI -> NUE
+Flugpreis-Crawler: NUE -> PMI / PMI -> NUE (nur Direktfluege, airlineunabhaengig)
 Kombinationen werden automatisch aus den konfigurierten Reisezeitraeumen generiert.
 """
 
+import base64
 from datetime import datetime, date, timedelta
-from html import escape
+from html import escape, unescape
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import time
 import traceback
@@ -54,6 +56,17 @@ HEADERS = {
     ),
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+}
+
+GOOGLE_HTML_HEADERS = {
+    "User-Agent": HEADERS["User-Agent"],
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+# Standard-Cookie fuer abgelehnte Personalisierung (verhindert EU-Consent-Redirect)
+GOOGLE_CONSENT_COOKIES = {
+    "SOCS": "CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg",
 }
 
 
@@ -146,7 +159,7 @@ def format_window_summary(windows=None):
     else:
         nights_txt = "Alle konfigurierten Kombinationen"
 
-    return f"{' & '.join(parts)} \u00b7 {nights_txt}"
+    return f"{' & '.join(parts)} \u00b7 {nights_txt} \u00b7 Nur Direktfl\u00fcge"
 
 
 COMBINATIONS   = build_combinations()
@@ -154,7 +167,91 @@ OUTBOUND_DATES = sorted(set(c["out"] for c in COMBINATIONS))
 RETURN_DATES   = sorted(set(c["ret"] for c in COMBINATIONS))
 
 # =============================================================================
-#  Airline-APIs
+#  Google Flights Protobuf-Encoder & Direktflug-Parser (alle Airlines)
+# =============================================================================
+
+MONTHS_EN = [
+    "", "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+]
+
+ARIA_NONSTOP_RE = re.compile(
+    r'aria-label="(From [0-9,]+ euros\.[^"]*?Nonstop flight with [^"]*?Select flight)"'
+)
+PRICE_EUR_RE = re.compile(r"From ([0-9,]+) euros")
+AIRLINE_RE   = re.compile(r"Nonstop flight with ([^.]+)\.")
+
+
+def _pb_varint(n):
+    out = bytearray()
+    while n > 127:
+        out.append((n & 0x7F) | 0x80)
+        n >>= 7
+    out.append(n)
+    return bytes(out)
+
+
+def _pb_field_varint(num, val):
+    return _pb_varint((num << 3) | 0) + _pb_varint(val)
+
+
+def _pb_field_bytes(num, data):
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    return _pb_varint((num << 3) | 2) + _pb_varint(len(data)) + data
+
+
+def build_google_flights_tfs(legs, trip_type=2, nonstop_only=True):
+    """
+    Erzeugt den Base64-Protobuf-Parameter 'tfs' fuer Google Flights.
+    legs: Liste aus Tupeln (dep_iata, arr_iata, 'YYYY-MM-DD')
+    trip_type: 1 = Hin & Zurueck, 2 = Nur Hinflug
+    """
+    payload = _pb_field_varint(1, 28) + _pb_field_varint(2, trip_type)
+    for dep, arr, date_str in legs:
+        a_dep = _pb_field_varint(1, 1) + _pb_field_bytes(2, dep)
+        a_arr = _pb_field_varint(1, 1) + _pb_field_bytes(2, arr)
+        flight = _pb_field_bytes(2, date_str)
+        if nonstop_only:
+            flight += _pb_field_varint(5, 1)  # 1 = nur Direktfluege
+        flight += _pb_field_bytes(13, a_dep) + _pb_field_bytes(14, a_arr)
+        payload += _pb_field_bytes(3, flight)
+    payload += _pb_field_varint(8, 1)   # 1 Erwachsener
+    payload += _pb_field_varint(9, 1)   # Economy
+    payload += _pb_field_varint(19, 2)  # Standard-Sortierung
+    return base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+
+def parse_google_flights_nonstop(html_text, expected_date):
+    """
+    Extrahiert alle Direktfluege fuer das angefragte Datum aus dem Google-Flights-HTML.
+    Prueft explizit auf 'Nonstop flight with ...' sowie das passende Abflugdatum.
+    Gibt Liste von (price_float, airline_str) aufsteigend nach Preis zurueck.
+    """
+    dt = datetime.strptime(expected_date, "%Y-%m-%d")
+    expected_day_fragment = f"{MONTHS_EN[dt.month]} {dt.day}"
+
+    offers = []
+    for m in ARIA_NONSTOP_RE.finditer(html_text):
+        label = unescape(m.group(1))
+        # Sicherstellen, dass es wirklich der angefragte Reisetag ist
+        if expected_day_fragment not in label:
+            continue
+        mp = PRICE_EUR_RE.search(label)
+        ma = AIRLINE_RE.search(label)
+        if not mp or not ma:
+            continue
+        price = round(float(mp.group(1).replace(",", "")), 2)
+        airline = ma.group(1).strip()
+        if price > 0 and airline:
+            offers.append((price, airline))
+
+    offers.sort(key=lambda x: x[0])
+    return offers
+
+
+# =============================================================================
+#  Flugpreis-Adapter
 # =============================================================================
 
 def _record_status(status, code_or_err):
@@ -162,7 +259,65 @@ def _record_status(status, code_or_err):
         status.setdefault("issues", set()).add(str(code_or_err))
 
 
+def fetch_google_flights_nonstop(dep, arr, dates, status=None):
+    """
+    Fragt Google Flights fuer alle Airlines ab (gefiltert auf Direktfluege in EUR).
+    Deckt u.a. Ryanair, Eurowings, Condor, Corendon, Marabu usw. ab.
+    """
+    req = ensure_requests()
+    results = {}
+    session = req.Session()
+
+    for d in dates:
+        try:
+            tfs = build_google_flights_tfs([(dep, arr, d)], trip_type=2, nonstop_only=True)
+            url = f"https://www.google.com/travel/flights/search?tfs={tfs}&hl=en&curr=EUR"
+            r = session.get(
+                url,
+                headers=GOOGLE_HTML_HEADERS,
+                cookies=GOOGLE_CONSENT_COOKIES,
+                timeout=20,
+            )
+            if r.status_code != 200:
+                print(f"  Google Flights {dep}->{arr} {d}: HTTP {r.status_code}")
+                _record_status(status, f"HTTP {r.status_code}")
+            elif "consent.google" in r.url:
+                print(f"  Google Flights {dep}->{arr} {d}: Consent-Redirect")
+                _record_status(status, "Consent-Redirect")
+            elif "sorry/index" in r.url:
+                print(f"  Google Flights {dep}->{arr} {d}: Rate-Limit")
+                _record_status(status, "Rate-Limit")
+            else:
+                offers = parse_google_flights_nonstop(r.text, d)
+                if offers:
+                    best_price, best_airline = offers[0]
+                    results[d] = {"price": best_price, "airline": best_airline}
+                    if status is not None:
+                        airlines_seen = status.setdefault("airlines", set())
+                        for _, al in offers:
+                            airlines_seen.add(al)
+                    # Kurze Uebersicht der gefundenen Airlines pro Tag im Log
+                    by_airline = {}
+                    for p, al in offers:
+                        if al not in by_airline or p < by_airline[al]:
+                            by_airline[al] = p
+                    summary_str = ", ".join(
+                        f"{al} {p:.0f} EUR" for al, p in sorted(by_airline.items(), key=lambda x: x[1])
+                    )
+                    print(f"      {d}: {summary_str}")
+                else:
+                    print(f"      {d}: keine Direktfluege gefunden")
+            time.sleep(0.8)
+        except Exception as e:
+            print(f"  Google Flights {dep}->{arr} {d}: {e}")
+            _record_status(status, type(e).__name__)
+    return results
+
+
 def fetch_ryanair(dep, arr, dates, status=None):
+    """
+    Direkte Ryanair-FareFinder-API (centgenaue Direktflug-Preise als Ergaenzung & Fallback).
+    """
     req = ensure_requests()
     results = {}
     for d in dates:
@@ -192,124 +347,6 @@ def fetch_ryanair(dep, arr, dates, status=None):
             time.sleep(0.5)
         except Exception as e:
             print(f"  Ryanair {dep}->{arr} {d}: {e}")
-            _record_status(status, type(e).__name__)
-    return results
-
-
-def fetch_eurowings(dep, arr, dates, status=None):
-    req = ensure_requests()
-    results = {}
-    session = req.Session()
-    # Session-Cookies holen
-    try:
-        r0 = session.get(
-            "https://www.eurowings.com/de.html",
-            headers=HEADERS,
-            timeout=10,
-        )
-        if r0.status_code != 200:
-            _record_status(status, f"HTTP {r0.status_code}")
-    except Exception as e:
-        _record_status(status, type(e).__name__)
-
-    for d in dates:
-        # Versuch 1: cheapestfares-Endpunkt
-        try:
-            r = session.get(
-                "https://www.eurowings.com/api/ndsservices/shoppingbasket/"
-                "v1.0.0/flightoffers/cheapestfares",
-                params={
-                    "departureAirport": dep,
-                    "arrivalAirport":   arr,
-                    "travelDate":       d,
-                    "currency":         "EUR",
-                    "cabinClass":       "ECONOMY",
-                    "passengerTypes":   "ADULT",
-                },
-                headers={**HEADERS, "Referer": "https://www.eurowings.com/"},
-                timeout=15,
-            )
-            if r.status_code == 200:
-                for offer in r.json().get("flightOffers", []):
-                    fd = (offer.get("departureDate") or "")[:10]
-                    fp = (offer.get("price") or {}).get("amount")
-                    if fd and fp and float(fp) > 0:
-                        if fd not in results or float(fp) < results[fd]["price"]:
-                            results[fd] = {"price": round(float(fp), 2), "airline": "Eurowings"}
-            else:
-                print(f"  Eurowings {dep}->{arr} {d}: HTTP {r.status_code}")
-                _record_status(status, f"HTTP {r.status_code}")
-            time.sleep(0.5)
-        except Exception as e:
-            print(f"  Eurowings {dep}->{arr} {d}: {e}")
-            _record_status(status, type(e).__name__)
-
-        # Versuch 2: availability-Endpunkt als Fallback
-        if d not in results:
-            try:
-                r2 = session.get(
-                    "https://www.eurowings.com/api/v2/flightsearch/availability",
-                    params={
-                        "origin":          dep,
-                        "destination":     arr,
-                        "outboundDate":    d,
-                        "adults":          1,
-                        "currency":        "EUR",
-                    },
-                    headers={**HEADERS, "Referer": "https://www.eurowings.com/"},
-                    timeout=15,
-                )
-                if r2.status_code == 200:
-                    data = r2.json()
-                    price = (
-                        data.get("lowestFare")
-                        or data.get("cheapestFare")
-                        or (data.get("fares") or [{}])[0].get("totalPrice")
-                    )
-                    if price and float(price) > 0:
-                        results[d] = {"price": round(float(price), 2), "airline": "Eurowings"}
-                else:
-                    print(f"  Eurowings v2 {dep}->{arr} {d}: HTTP {r2.status_code}")
-                    _record_status(status, f"HTTP {r2.status_code}")
-                time.sleep(0.5)
-            except Exception as e:
-                print(f"  Eurowings v2 {dep}->{arr} {d}: {e}")
-                _record_status(status, type(e).__name__)
-    return results
-
-
-def fetch_condor(dep, arr, dates, status=None):
-    req = ensure_requests()
-    results = {}
-    for d in dates:
-        # Versuch 1: REST-API
-        try:
-            r = req.get(
-                "https://www.condor.com/de/flugangebote/api/v1/flights",
-                params={
-                    "origin":        dep,
-                    "destination":   arr,
-                    "departureDate": d,
-                    "adults":        1,
-                    "currency":      "EUR",
-                },
-                headers={**HEADERS, "Referer": "https://www.condor.com/"},
-                timeout=15,
-            )
-            if r.status_code == 200:
-                data = r.json()
-                for item in data.get("flights", data.get("offers", [])):
-                    fd = (item.get("departureDate") or item.get("date") or "")[:10]
-                    fp = item.get("price", {}).get("amount") or item.get("totalPrice")
-                    if fd and fp and float(fp) > 0:
-                        if fd not in results or float(fp) < results[fd]["price"]:
-                            results[fd] = {"price": round(float(fp), 2), "airline": "Condor"}
-            else:
-                print(f"  Condor {dep}->{arr} {d}: HTTP {r.status_code}")
-                _record_status(status, f"HTTP {r.status_code}")
-            time.sleep(0.5)
-        except Exception as e:
-            print(f"  Condor {dep}->{arr} {d}: {e}")
             _record_status(status, type(e).__name__)
     return results
 
@@ -376,10 +413,13 @@ def fmt_date(d):
     return f"{WEEKDAYS_DE[dt.weekday()]} {dt.strftime('%d.%m.%Y')}"
 
 def gf_url(out, ret):
-    return (
-        f"https://www.google.com/travel/flights#flt="
-        f"NUE.PMI.{out}*PMI.NUE.{ret};c:EUR;e:1;sd:1;t:f"
+    """Google-Flights-Suchlink direkt auf Hin-/Rueckflug NUE<->PMI (nur Direktfluege, EUR)."""
+    tfs = build_google_flights_tfs(
+        [("NUE", "PMI", out), ("PMI", "NUE", ret)],
+        trip_type=1,
+        nonstop_only=True,
     )
+    return f"https://www.google.com/travel/flights/search?tfs={tfs}&hl=de&curr=EUR"
 
 def trend_badge(t_info):
     if not t_info or t_info["trend"] is None:
@@ -403,8 +443,10 @@ def format_sources_footer(sources):
         out_t = info.get("out_total", 0)
         ret_t = info.get("ret_total", 0)
         issues = info.get("issues") or []
+        airlines = info.get("airlines") or []
         if out_c or ret_c:
-            parts.append(f"{escape(name)} ({out_c}/{out_t} Hin, {ret_c}/{ret_t} R&uuml;ck)")
+            extra = f"; Airlines: {escape(', '.join(airlines))}" if airlines else ""
+            parts.append(f"{escape(name)} ({out_c}/{out_t} Hin, {ret_c}/{ret_t} R&uuml;ck{extra})")
         elif issues:
             parts.append(f"{escape(name)} (0 &ndash; {escape(', '.join(issues))})")
         else:
@@ -612,61 +654,47 @@ def run():
     print(f"  Kombinationen: {len(COMBINATIONS)} | Hinflugdaten: {OUTBOUND_DATES} | Rueckflugdaten: {RETURN_DATES}")
     print(f"{'='*55}")
 
-    st_ryanair   = {}
-    st_eurowings = {}
-    st_condor    = {}
+    st_google  = {}
+    st_ryanair = {}
 
-    print("\n[1/6] Ryanair NUE -> PMI ...")
-    out_ryanair   = fetch_ryanair("NUE", "PMI", OUTBOUND_DATES, st_ryanair)
+    print("\n[1/4] Google Flights Direktfluege NUE -> PMI (alle Airlines) ...")
+    out_google = fetch_google_flights_nonstop("NUE", "PMI", OUTBOUND_DATES, st_google)
+    print(f"      -> {len(out_google)} Ergebnis(se)")
+
+    print("[2/4] Ryanair API NUE -> PMI (centgenau / Fallback) ...")
+    out_ryanair = fetch_ryanair("NUE", "PMI", OUTBOUND_DATES, st_ryanair)
     print(f"      -> {len(out_ryanair)} Ergebnis(se)")
 
-    print("[2/6] Eurowings NUE -> PMI ...")
-    out_eurowings = fetch_eurowings("NUE", "PMI", OUTBOUND_DATES, st_eurowings)
-    print(f"      -> {len(out_eurowings)} Ergebnis(se)")
+    print("[3/4] Google Flights Direktfluege PMI -> NUE (alle Airlines) ...")
+    ret_google = fetch_google_flights_nonstop("PMI", "NUE", RETURN_DATES, st_google)
+    print(f"      -> {len(ret_google)} Ergebnis(se)")
 
-    print("[3/6] Condor NUE -> PMI ...")
-    out_condor    = fetch_condor("NUE", "PMI", OUTBOUND_DATES, st_condor)
-    print(f"      -> {len(out_condor)} Ergebnis(se)")
-
-    print("[4/6] Ryanair PMI -> NUE ...")
-    ret_ryanair   = fetch_ryanair("PMI", "NUE", RETURN_DATES, st_ryanair)
+    print("[4/4] Ryanair API PMI -> NUE (centgenau / Fallback) ...")
+    ret_ryanair = fetch_ryanair("PMI", "NUE", RETURN_DATES, st_ryanair)
     print(f"      -> {len(ret_ryanair)} Ergebnis(se)")
 
-    print("[5/6] Eurowings PMI -> NUE ...")
-    ret_eurowings = fetch_eurowings("PMI", "NUE", RETURN_DATES, st_eurowings)
-    print(f"      -> {len(ret_eurowings)} Ergebnis(se)")
-
-    print("[6/6] Condor PMI -> NUE ...")
-    ret_condor    = fetch_condor("PMI", "NUE", RETURN_DATES, st_condor)
-    print(f"      -> {len(ret_condor)} Ergebnis(se)")
-
     sources_summary = {
-        "Ryanair": {
+        "Google Flights Direktfl\u00fcge": {
+            "out": len(out_google),
+            "out_total": len(OUTBOUND_DATES),
+            "ret": len(ret_google),
+            "ret_total": len(RETURN_DATES),
+            "airlines": sorted(st_google.get("airlines", set())),
+            "issues": sorted(st_google.get("issues", set())),
+        },
+        "Ryanair API": {
             "out": len(out_ryanair),
             "out_total": len(OUTBOUND_DATES),
             "ret": len(ret_ryanair),
             "ret_total": len(RETURN_DATES),
             "issues": sorted(st_ryanair.get("issues", set())),
         },
-        "Eurowings": {
-            "out": len(out_eurowings),
-            "out_total": len(OUTBOUND_DATES),
-            "ret": len(ret_eurowings),
-            "ret_total": len(RETURN_DATES),
-            "issues": sorted(st_eurowings.get("issues", set())),
-        },
-        "Condor": {
-            "out": len(out_condor),
-            "out_total": len(OUTBOUND_DATES),
-            "ret": len(ret_condor),
-            "ret_total": len(RETURN_DATES),
-            "issues": sorted(st_condor.get("issues", set())),
-        },
     }
 
-    # Guenstigster Preis je Datum aus allen Quellen
-    outbound = merge_cheapest(out_ryanair, out_eurowings, out_condor)
-    returns  = merge_cheapest(ret_ryanair, ret_eurowings, ret_condor)
+    # Guenstigster Direktflug-Preis je Datum aus allen Quellen
+    # (Ryanair API zuerst fuer centgenaue Gleichstands-Aufloesung)
+    outbound = merge_cheapest(out_ryanair, out_google)
+    returns  = merge_cheapest(ret_ryanair, ret_google)
 
     # Kombinationen berechnen
     combos = []

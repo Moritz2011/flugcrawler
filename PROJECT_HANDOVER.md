@@ -8,9 +8,9 @@
 
 Das Projekt ist ein kleiner Python-Batchprozess für Flugpreise zwischen Nürnberg (`NUE`) und Palma de Mallorca (`PMI`). Er ermittelt zulässige Hin-/Rückflug-Kombinationen über konfigurierte Reisezeiträume, fragt mehrere Quellen an, addiert die jeweils günstigsten gefundenen Einzelflüge und erzeugt eine statische HTML-Tabelle mit Preisverlauf. GitHub Actions übernimmt die zeitgesteuerte Ausführung; GitHub Pages wurde zur Veröffentlichung des Dashboards verwendet.
 
-Die rechnerische Auswertung, Trip-Trennung in der Historie und die HTML-Erstellung funktionieren mit den gespeicherten und aktuellen Live-Daten. **Die gewünschte airlineübergreifende Marktabdeckung ist weiterhin nicht erreicht: Auch beim Live-Abruf am 24.11.2026 lieferte ausschließlich Ryanair reale Preise (4/4 Hin, 4/4 Rück).** Eurowings (beide Endpunkte) und Condor antworteten reproduzierbar mit `HTTP 403` (WAF/Access Denied). Der Quellenstatus wird nun transparent im Log, in `flight_data.json` und in der Dashboard-Fußzeile ausgewiesen.
+Die rechnerische Auswertung, Trip-Trennung in der Historie, airlineübergreifende Direktflug-Suche und HTML-Erstellung funktionieren mit aktuellen Live-Daten. **Seit dem 24.11.2026 (Abend-Update) ist auch die lange gewünschte airlineübergreifende Direktflug-Abdeckung real erreicht:** Über den neuen Google-Flights-Direktflug-Adapter (`fetch_google_flights_nonstop()` mit Base64-Protobuf-`tfs`-Anfrage und expliziter Nonstop- & Datumsprüfung) in Kombination mit der centgenauen Ryanair-API liefert der Crawler Live-Preise für **alle Direktflug-Airlines auf `NUE ↔ PMI`** – am 24.11.2026 konkret nachgewiesen mit **Condor, Eurowings und Ryanair** (4/4 Hin, 4/4 Rück; weitere Airlines wie Corendon/Marabu werden automatisch erfasst, sobald Google Flights sie für diese Daten listet). Die zuvor gescheiterten geratenen HTTP-403-Adapter für Eurowings und Condor wurden entfernt.
 
-**Aktueller Betriebswunsch (seit 24.11.2026):** Der zuvor ab Oktober 2026 stillgelegte Tracker soll wieder mit neuen Zeiträumen für **Mai/Juni 2027** laufen (Hauptzeitraum 26.05.–01.06.2027 und Alternative 13.05.–17.05.2027, jeweils genau 4 Nächte). Code, Workflow-Schutz (`concurrency`), Initial-Crawl und Dashboard sind lokal umgesetzt und auf GitHub gepusht. **Hinweis zur Reaktivierung auf GitHub:** Da Workflow und GitHub Pages zuvor im GitHub-UI deaktiviert wurden (und `gh` lokal nicht installiert ist), müssen die Aktivierung des Workflows und ggf. die Pages-Einstellung noch direkt in den GitHub-Repository-Einstellungen bestätigt werden.
+**Aktueller Betriebswunsch (seit 24.11.2026):** Der Tracker läuft wieder aktiv für **Mai/Juni 2027** (Hauptzeitraum 26.05.–01.06.2027 und Alternative 13.05.–17.05.2027, jeweils genau 4 Nächte, **nur Direktflüge ab/bis Nürnberg**, Airline egal). Repository (`public`), Workflow (`active`) und GitHub Pages (`https://moritz2011.github.io/flugcrawler/`, `HTTP 200`) sind verifiziert aktiv.
 
 ### 0.2 Herkunft von Aussagen
 
@@ -29,14 +29,15 @@ Zugänglich war der lange Verlauf dieses Threads: ursprünglicher Bau in Cowork,
 | --- | --- |
 | Repository | `Moritz2011/flugcrawler` |
 | Standardbranch / lokaler Branch | `main` |
-| Vorheriger Commit vor dem Update am 24.11.2026 | `fd65c77` (Aufnahme `PROJECT_HANDOVER.md`, 14.11.2026); davor `58f9bce` (letztes Okt.-2026-Preisupdate, 09.10.2026) |
-| Aktuelle funktionale Änderung | 24.11.2026: Umstellung auf `TRAVEL_WINDOWS` (Mai/Juni 2027), Trip-Trennung in Historie/Chart, HTTP-Status-Logging, Quellenstatus im Dashboard, atomisches Schreiben, Workflow-`concurrency` |
+| Vorheriger Commit vor dem Multi-Airline-Update | `abf7138` (Mai/Juni-2027-Umstellung, 24.11.2026); davor `fd65c77` (14.11.2026) und `58f9bce` (09.10.2026) |
+| Aktuelle funktionale Änderung | 24.11.2026: Umstellung auf airlineübergreifende Direktflug-Suche via Google Flights (`fetch_google_flights_nonstop`, Protobuf-`tfs` + Nonstop-/Datums-Validierung) + Ryanair-API; Entfernen der HTTP-403-Adapter; Direktflug-Filter auch im „Suchen“-Link |
 | Historische Implementierungscommits | `ada0d31` (29.04.2026), `3bd5a61` (30.04.2026) |
 | Verfolgte Projektdateien | 7 (inkl. `PROJECT_HANDOVER.md`); siehe Abschnitt B |
-| Historie | 165 Tagesstände gesamt: 164 historische Stände (29.04.2026–09.10.2026, Okt.-2026-Reise) + 1 aktueller Stand (24.11.2026, Trip `2027-05-mallorca`) |
-| Airlines in sämtlichen gespeicherten Kombinationen | weiterhin ausschließlich `Ryanair` (Eurowings und Condor am 24.11.2026 jeweils mit `HTTP 403` blockiert) |
-| Aktive Reisefenster im Code (`TRIP_ID = "2027-05-mallorca"`) | Hauptzeitraum 26.05.–01.06.2027 (genau 4 Nächte, 3 Kombis) + Alternative 13.05.–17.05.2027 (genau 4 Nächte, 1 Kombi) |
-| Letzter Live-Bestpreis (24.11.2026) | `2027-05-28` → `2027-06-01` (4 Nächte, Hauptzeitraum): 183,98 EUR (Ryanair hin 71,99 EUR / zurück 111,99 EUR) |
+| Historie | 165 Tagesstände gesamt: 164 historische Stände (29.04.2026–09.10.2026, Okt.-2026-Reise, nur Ryanair) + 1 aktueller Multi-Airline-Stand (24.11.2026, Trip `2027-05-mallorca`) |
+| Nachgewiesene Airlines im Live-Lauf (24.11.2026) | **Condor, Eurowings, Ryanair** (Direktflüge `NUE ↔ PMI`, 4/4 Hin & 4/4 Rück; beliebige weitere Direktflug-Airlines werden automatisch erkannt) |
+| Aktive Reisefenster im Code (`TRIP_ID = "2027-05-mallorca"`) | Hauptzeitraum 26.05.–01.06.2027 (genau 4 Nächte, 3 Kombis) + Alternative 13.05.–17.05.2027 (genau 4 Nächte, 1 Kombi), **nur Direktflüge** |
+| Letzter Live-Bestpreis (24.11.2026) | `2027-05-28` → `2027-06-01` (4 Nächte, Hauptzeitraum): **181,99 EUR** (Ryanair hin 71,99 EUR / Eurowings zurück 110,00 EUR) |
+| GitHub-Betriebsstatus (verifiziert 24.11.2026) | Repository `public`, `crawler.yml` `active`, `pages-build-deployment` `active`, Pages `HTTP 200` |
 
 Diese Datei wurde zunächst als Entwurf unversioniert angelegt und auf ausdrücklichen Wunsch des Nutzers am 14. November 2026 ins Git-Repository aufgenommen und gepusht, um dauerhaft als zentrale Wissensbasis erhalten zu bleiben.
 
@@ -66,11 +67,9 @@ Aus dem Gespräch ergeben sich folgende verbindliche beziehungsweise bereits akz
 
 ### A.3 Aktueller Entwicklungs- und Betriebsstand
 
-Es existiert ein aktiv wiederbelebter Python-Batchprozess mit Trip-getrennter Datenspeicherung und statischem HTML-Dashboard für Mai/Juni 2027. Der erste Live-Lauf am 24.11.2026 lieferte vollständige Ryanair-Preise für alle 4 Kombinationen (günstigstes Angebot: 28.05.–01.06.2027 für 183,98 EUR).
+Es existiert ein aktiv laufender Python-Batchprozess mit Trip-getrennter Datenspeicherung, airlineübergreifender Direktflug-Suche und statischem HTML-Dashboard für Mai/Juni 2027. Der Live-Lauf am 24.11.2026 lieferte erstmals reale gemischte Airline-Kombinationen aus **Condor, Eurowings und Ryanair** (Bestangebot: `28.05.–01.06.2027` für **181,99 EUR**, Ryanair hin / Eurowings zurück).
 
-Das wichtigste fachliche Defizit ist weiterhin die unvollständige Preisabdeckung (Eurowings und Condor blockieren direkte `requests`-Anfragen mit `HTTP 403`). Ein Ergebnis ist daher transparent als günstigster **von den funktionierenden Quellen gelieferter** Preis ausgewiesen.
-
-Für den automatischen täglichen Betrieb und die Website-Veröffentlichung müssen die zuvor stillgelegten GitHub-Actions- und GitHub-Pages-Einstellungen vom Nutzer in GitHub wieder aktiviert bzw. geprüft werden.
+Repository (`public`), GitHub Actions (`crawler.yml: active`) und GitHub Pages (`https://moritz2011.github.io/flugcrawler/`, `HTTP 200`) sind verifiziert aktiv. Zu beobachten bleibt im täglichen Cloud-Betrieb (US-Runner), ob Google Flights dauerhaft stabil ohne Rate-Limit (`sorry/index`) oder Markup-Änderungen antwortet und ob die automatische Kette `Bot-Push → Pages-Build` nach dem ersten morgendlichen Lauf zuverlässig greift.
 
 ## B. Technische Architektur
 
@@ -461,7 +460,7 @@ Es gibt keine konfigurierte Formatierung, keinen Linter, keinen Typprüfer und k
 
 | Thema | Beleg / Auswirkung | Bisheriger Versuch / Zustand |
 | --- | --- | --- |
-| Nur Ryanair liefert beobachtete Daten | Alle 164 historischen Stände (Okt. 2026) und der Live-Lauf am 24.11.2026 (Mai/Juni 2027) enthalten ausschließlich Ryanair. Am 24.11.2026 meldeten Eurowings (beide Endpunkte) und Condor durchgehend `HTTP 403` (WAF/Bot-Block). | HTTP-Status wird jetzt geloggt und im Dashboard angezeigt. Für echte Eurowings-/Condor-Abdeckung wäre ein anderer Datenanbieter oder Browser-Ansatz nötig. **Offen.** |
+| Nur Ryanair liefert beobachtete Daten | **Behoben (24.11.2026):** Die geratenen HTTP-403-Adapter (Eurowings/Condor) wurden durch `fetch_google_flights_nonstop()` (Base64-Protobuf-`tfs` + Nonstop-/Datumsprüfung) ergänzt um `fetch_ryanair()` ersetzt. Live-Lauf am 24.11.2026 fand Condor, Eurowings und Ryanair auf allen 8 Daten. | **Risiko im Blick behalten:** Google Flights ist ein HTML-/ARIA-Parser (keine offizielle SLA-API); bei HTML-Änderungen oder Rate-Limits auf GitHub-Actions-IPs greift `fetch_ryanair()` als Fallback und das Problem wird im Quellenstatus sichtbar. |
 | Quellenstatus / stille Nicht-200-Statuscodes | **Behoben (24.11.2026):** Nicht-200-Statuscodes werden jetzt geloggt, unter `sources` in `flight_data.json` gespeichert und in der Dashboard-Fußzeile angezeigt. | Umgesetzt und im Live-Lauf am 24.11.2026 verifiziert. |
 | UTC-Zeitplan-Kommentar & `concurrency` | **Behoben (24.11.2026):** YAML-Kommentar korrigiert (`06:00 UTC = 08:00 MESZ / 07:00 MEZ`) und `concurrency`-Gruppe ergänzt. | `0 6 * * *` bleibt fixer UTC-Cron; kein DST-Wechsel im Cron selbst. |
 | Reisefenster abgelaufen & feste „Oktober 2026“-Texte | **Behoben (24.11.2026):** Umstellung auf `TRAVEL_WINDOWS` (Mai/Juni 2027), dynamischen Titel/Untertitel und `TRIP_ID`-Trennung für Chart/Trends. | Historische Okt.-2026-Daten bleiben in `flight_data.json` erhalten. |
@@ -602,6 +601,25 @@ Auf ausdrücklichen Nutzerauftrag wurde der Crawler am 24.11.2026 für zwei neue
   1. Unter **Actions → ✈️ Flugpreis-Crawler** prüfen, ob der Workflow wieder aktiviert ist (ggf. „Enable workflow“ klicken).
   2. Unter **Settings → Pages** prüfen, ob GitHub Pages für Branch `main` / `/ (root)` wieder aktiv ist (Hinweis: Bei privatem Repository benötigt GitHub Pages einen kostenpflichtigen GitHub-Plan; im Free-Plan ist Pages nur bei öffentlichem Repository verfügbar).
   3. Weiterhin offen: Validierte Datenquelle für Eurowings/Condor bzw. airlineübergreifende Abdeckung.
+
+### H.6 Multi-Airline-Direktflug-Suche & verifizierte Reaktivierung (24.11.2026, späterer Abend)
+
+- **GitHub-Reaktivierung verifiziert:** Repository `Moritz2011/flugcrawler` ist wieder `public`, Workflows `✈️ Flugpreis-Crawler` und `pages-build-deployment` sind `active`, GitHub Pages (`https://moritz2011.github.io/flugcrawler/`) liefert `HTTP 200`.
+- **Nutzeranforderung präzisiert:** Airline egal, entscheidend sind **ab/bis Nürnberg (`NUE`)** und **nur Direktflüge**.
+- **Umsetzung in `crawler.py`:**
+  - Neuer Adapter `fetch_google_flights_nonstop()` (keine Zusatzpakete nötig, reines `requests` + Protobuf-`tfs`-Encoder + ARIA-Label-Parser mit expliziter `Nonstop flight with ...`- und Datumsprüfung; Standard-`SOCS`-Cookie gegen EU-Consent-Redirect; explizite Erkennung von `HTTP != 200`, Consent-Redirect und `sorry/index`-Rate-Limit).
+  - Beibehaltung von `fetch_ryanair()` als centgenaue Ergänzung und unabhängiger Fallback.
+  - Entfernung der funktionslosen HTTP-403-Adapter (`fetch_eurowings`, `fetch_condor`).
+  - `gf_url()` erzeugt jetzt direkt einen Google-Flights-`tfs`-Link mit aktiviertem Direktflug-Filter (`nonstop_only=True`).
+- **Verifizierter Multi-Airline-Live-Lauf (24.11.2026, 20:48 CET):**
+  - Google Flights Direktflüge: 4/4 Hin, 4/4 Rück; gefundene Airlines: **Condor, Eurowings, Ryanair**.
+  - Ryanair API: 4/4 Hin, 4/4 Rück.
+  - Ergebnisse (alle Direktflüge, p.P.):
+    1. `Fr 28.05.2027 → Di 01.06.2027` (Hauptzeitraum): **181,99 EUR** (Ryanair 71,99 + Eurowings 110,00 EUR) — Bestes Angebot
+    2. `Do 13.05.2027 → Mo 17.05.2027` (Alternative): **236,99 EUR** (Ryanair 141,99 + Eurowings 95,00 EUR)
+    3. `Do 27.05.2027 → Mo 31.05.2027` (Hauptzeitraum): **262,99 EUR** (Ryanair 117,99 + Eurowings 145,00 EUR)
+    4. `Mi 26.05.2027 → So 30.05.2027` (Hauptzeitraum): **346,00 EUR** (Condor 81,00 + Eurowings 265,00 EUR)
+- **Zu beobachten:** Erster automatischer GitHub-Actions-Lauf auf US-Runner (Google-Flights-Verhalten ohne Rate-Limit + automatischer Pages-Rebuild nach Bot-Push).
 
 ## I. Installation, Start und Entwicklungsumgebung
 
