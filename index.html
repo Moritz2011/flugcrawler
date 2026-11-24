@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flugpreise NUE &rarr; PMI | Oktober 2026</title>
+  <title>Flugpreise NUE &rarr; PMI | Mai/Juni 2027</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,7 +12,7 @@
     .header { background: linear-gradient(135deg, #1a365d, #2b6cb0);
                color: white; padding: 32px 40px; }
     .header h1 { font-size: 26px; font-weight: 700; }
-    .header .sub { opacity: .8; margin-top: 6px; font-size: 14px; }
+    .header .sub { opacity: .85; margin-top: 6px; font-size: 14px; }
     .header .ts  { opacity: .6; margin-top: 6px; font-size: 13px; }
     .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
     .best-card { background: linear-gradient(135deg, #c6f6d5, #9ae6b4);
@@ -35,6 +35,8 @@
     .na { color: #a0aec0; font-style: italic; }
     .badge { background: #38a169; color: white; font-size: 10px; font-weight: 700;
               padding: 2px 8px; border-radius: 99px; display: inline-block; margin-top: 4px; }
+    .badge-alt { background: #edf2f7; color: #4a5568; font-size: 10px; font-weight: 600;
+                  padding: 2px 8px; border-radius: 99px; display: inline-block; margin-top: 4px; }
     .btn { display: inline-block; background: #2b6cb0; color: white;
             padding: 7px 14px; border-radius: 6px; text-decoration: none;
             font-size: 12px; font-weight: 500; }
@@ -48,23 +50,23 @@
                   box-shadow: 0 2px 10px rgba(0,0,0,.08); }
     .chart-box h3 { font-size: 15px; color: #2d3748; margin-bottom: 16px; }
     canvas { max-height: 200px; }
-    .footer { text-align: center; color: #a0aec0; font-size: 12px;
-               margin-top: 28px; padding-bottom: 8px; }
+    .footer { text-align: center; color: #718096; font-size: 12px;
+               margin-top: 28px; padding-bottom: 8px; line-height: 1.6; }
   </style>
 </head>
 <body>
 <div class="header">
   <h1>Flugpreise N&uuml;rnberg (NUE) &rarr; Mallorca (PMI)</h1>
-  <div class="sub">Oktober 2026 &middot; Alle Kombinationen mit mindestens 2 N&auml;chten</div>
-  <div class="ts">Zuletzt aktualisiert: 09.10.2026 um 12:09 Uhr</div>
+  <div class="sub">26.05.–01.06.2027 &amp; Alternative 13.05.–17.05.2027 · Jeweils 4 Nächte</div>
+  <div class="ts">Zuletzt aktualisiert: 24.11.2026 um 20:32 Uhr</div>
 </div>
 <div class="wrap">
   
   <div class="best-card">
     <div class="best-label">G&uuml;nstigstes Angebot heute</div>
-    <div class="best-price">174.69 &euro; <span class="trend same">&#8594;</span></div>
+    <div class="best-price">183.98 &euro; </div>
     <div class="best-details">
-      Do 22.10.2026 &rarr; Mo 26.10.2026
+      Fr 28.05.2027 &rarr; Di 01.06.2027
       &nbsp;&middot;&nbsp; 4 N&auml;chte
       &nbsp;&middot;&nbsp; Hin: Ryanair
       &nbsp;&middot;&nbsp; R&uuml;ck: Ryanair
@@ -80,58 +82,40 @@
     </thead>
     <tbody>
         <tr class="best-row">
-          <td>Do 22.10.2026<br><span class="badge">Bestes Angebot</span></td>
-          <td>Mo 26.10.2026</td>
+          <td>Fr 28.05.2027<br><span class="badge">Bestes Angebot</span></td>
+          <td>Di 01.06.2027</td>
           <td>4 N&auml;chte</td>
-          <td>14.99 &euro;<br><small>Ryanair</small></td>
-          <td>159.70 &euro;<br><small>Ryanair</small></td>
-          <td><strong>174.69 &euro;</strong> <span class="trend same">&#8594;</span></td>
-          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-22*PMI.NUE.2026-10-26;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
+          <td>71.99 &euro;<br><small>Ryanair</small></td>
+          <td>111.99 &euro;<br><small>Ryanair</small></td>
+          <td><strong>183.98 &euro;</strong> </td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2027-05-28*PMI.NUE.2027-06-01;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
         </tr>
         <tr>
-          <td>Fr 23.10.2026<br></td>
-          <td>Mo 26.10.2026</td>
-          <td>3 N&auml;chte</td>
-          <td>31.99 &euro;<br><small>Ryanair</small></td>
-          <td>159.70 &euro;<br><small>Ryanair</small></td>
-          <td><strong>191.69 &euro;</strong> <span class="trend same">&#8594;</span></td>
-          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-23*PMI.NUE.2026-10-26;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
+          <td>Do 13.05.2027<br><span class="badge-alt">Alternative</span></td>
+          <td>Mo 17.05.2027</td>
+          <td>4 N&auml;chte</td>
+          <td>141.99 &euro;<br><small>Ryanair</small></td>
+          <td>126.44 &euro;<br><small>Ryanair</small></td>
+          <td><strong>268.43 &euro;</strong> </td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2027-05-13*PMI.NUE.2027-05-17;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
         </tr>
         <tr>
-          <td>Sa 24.10.2026<br></td>
-          <td>Mo 26.10.2026</td>
-          <td>2 N&auml;chte</td>
-          <td>83.99 &euro;<br><small>Ryanair</small></td>
-          <td>159.70 &euro;<br><small>Ryanair</small></td>
-          <td><strong>243.69 &euro;</strong> <span class="trend up">&#8593; 7.00 &euro;</span></td>
-          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-24*PMI.NUE.2026-10-26;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
+          <td>Do 27.05.2027</td>
+          <td>Mo 31.05.2027</td>
+          <td>4 N&auml;chte</td>
+          <td>117.99 &euro;<br><small>Ryanair</small></td>
+          <td>167.34 &euro;<br><small>Ryanair</small></td>
+          <td><strong>285.33 &euro;</strong> </td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2027-05-27*PMI.NUE.2027-05-31;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
         </tr>
         <tr>
-          <td>Do 22.10.2026<br></td>
-          <td>Sa 24.10.2026</td>
-          <td>2 N&auml;chte</td>
-          <td>14.99 &euro;<br><small>Ryanair</small></td>
-          <td>256.99 &euro;<br><small>Ryanair</small></td>
-          <td><strong>271.98 &euro;</strong> <span class="trend down">&#8595; 19.00 &euro;</span></td>
-          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-22*PMI.NUE.2026-10-24;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
-        </tr>
-        <tr>
-          <td>Do 22.10.2026<br></td>
-          <td>So 25.10.2026</td>
-          <td>3 N&auml;chte</td>
-          <td>14.99 &euro;<br><small>Ryanair</small></td>
-          <td>268.66 &euro;<br><small>Ryanair</small></td>
-          <td><strong>283.65 &euro;</strong> <span class="trend up">&#8593; 41.99 &euro;</span></td>
-          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-22*PMI.NUE.2026-10-25;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
-        </tr>
-        <tr>
-          <td>Fr 23.10.2026<br></td>
-          <td>So 25.10.2026</td>
-          <td>2 N&auml;chte</td>
-          <td>31.99 &euro;<br><small>Ryanair</small></td>
-          <td>268.66 &euro;<br><small>Ryanair</small></td>
-          <td><strong>300.65 &euro;</strong> <span class="trend up">&#8593; 41.99 &euro;</span></td>
-          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2026-10-23*PMI.NUE.2026-10-25;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
+          <td>Mi 26.05.2027</td>
+          <td>So 30.05.2027</td>
+          <td>4 N&auml;chte</td>
+          <td>117.99 &euro;<br><small>Ryanair</small></td>
+          <td>280.89 &euro;<br><small>Ryanair</small></td>
+          <td><strong>398.88 &euro;</strong> </td>
+          <td><a href="https://www.google.com/travel/flights#flt=NUE.PMI.2027-05-26*PMI.NUE.2027-05-30;c:EUR;e:1;sd:1;t:f" target="_blank" class="btn">Suchen</a></td>
         </tr></tbody>
   </table>
   <div class="chart-box">
@@ -139,17 +123,17 @@
     <canvas id="chart"></canvas>
   </div>
   <div class="footer">
-    Preise ohne Gew&auml;hr &middot; Direkt beim Anbieter verifizieren &middot; Automatisch generiert
+    Preise ohne Gew&auml;hr &middot; Direkt beim Anbieter verifizieren &middot; Automatisch generiert<br>Quellenstatus: Ryanair (4/4 Hin, 4/4 R&uuml;ck) &middot; Eurowings (0 &ndash; HTTP 403) &middot; Condor (0 &ndash; HTTP 403)
   </div>
 </div>
 <script>
 new Chart(document.getElementById('chart'), {
   type: 'line',
   data: {
-    labels: ["2026-09-10", "2026-09-11", "2026-09-12", "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09"],
+    labels: ["2026-11-24"],
     datasets: [{
       label: 'Guenstigstes Angebot (EUR)',
-      data: [197.19, 193.19, 191.19, 192.11, 188.11, 191.38, 224.98, 214.01, 210.63, 212.63, 209.26, 209.26, 184.19, 192.38, 192.38, 189.11, 162.63, 184.19, 193.98, 140.78, 136.89, 175.45, 177.39, 173.69, 173.69, 188.45, 188.45, 148.77, 174.69, 174.69],
+      data: [183.98],
       borderColor: '#2b6cb0',
       backgroundColor: 'rgba(43,108,176,0.08)',
       borderWidth: 2.5,

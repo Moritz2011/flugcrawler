@@ -1,12 +1,16 @@
 name: "✈️ Flugpreis-Crawler"
 
 on:
-  # Täglich um 08:00 Uhr (deutscher Zeit, CET/CEST berücksichtigt)
+  # Taeglich um 06:00 UTC (08:00 MESZ im Sommer / 07:00 MEZ im Winter)
   schedule:
-    - cron: "0 6 * * *"   # 06:00 UTC = 08:00 CEST (Sommerzeit, gilt für Oktober)
+    - cron: "0 6 * * *"
 
-  # Manuell auslösbar über GitHub UI (Button "Run workflow")
+  # Manuell ausloesbar ueber GitHub UI (Button "Run workflow")
   workflow_dispatch:
+
+concurrency:
+  group: flight-crawler
+  cancel-in-progress: false
 
 permissions:
   contents: write   # Damit der Bot index.html + flight_data.json zurückschreiben darf

@@ -1,16 +1,16 @@
 # Projektübergabe: Flugpreis-Tracker Nürnberg – Mallorca
 
-> **Stand: 14. November 2026, Europe/Berlin.** Diese Datei dokumentiert das tatsächlich in VS Code geöffnete Git-Repository `flugcrawler` auf dem NAS. Sie beschreibt den bestehenden Code und die zugängliche Projektgeschichte; sie ist kein Auftrag, den derzeit nicht benötigten Tracker wieder zu aktivieren.
+> **Stand: 24. November 2026, Europe/Berlin.** Diese Datei dokumentiert das tatsächlich in VS Code geöffnete Git-Repository `flugcrawler` auf dem NAS als dauerhafte, anbieterunabhängige Wissensbasis. Der Nutzer hat am 24.11.2026 die Wiederaktivierung des Trackers mit neuen Reisedaten für Mai/Juni 2027 beauftragt.
 
 ## 0. Orientierung, Quellenlage und belastbarer Ausgangsstand
 
 ### 0.1 In einer Minute verstehen
 
-Das Projekt ist ein kleiner Python-Batchprozess für Flugpreise zwischen Nürnberg (`NUE`) und Palma de Mallorca (`PMI`). Er ermittelt zulässige Hin-/Rückflug-Kombinationen in einem festen Reisefenster, fragt mehrere Quellen an, addiert die jeweils günstigsten gefundenen Einzelflüge und erzeugt eine statische HTML-Tabelle mit Preisverlauf. GitHub Actions übernimmt die zeitgesteuerte Ausführung; GitHub Pages wurde zur Veröffentlichung des Dashboards verwendet.
+Das Projekt ist ein kleiner Python-Batchprozess für Flugpreise zwischen Nürnberg (`NUE`) und Palma de Mallorca (`PMI`). Er ermittelt zulässige Hin-/Rückflug-Kombinationen über konfigurierte Reisezeiträume, fragt mehrere Quellen an, addiert die jeweils günstigsten gefundenen Einzelflüge und erzeugt eine statische HTML-Tabelle mit Preisverlauf. GitHub Actions übernimmt die zeitgesteuerte Ausführung; GitHub Pages wurde zur Veröffentlichung des Dashboards verwendet.
 
-Die rechnerische Auswertung und die HTML-Erstellung funktionieren mit den gespeicherten Daten. **Die gewünschte airlineübergreifende Marktabdeckung ist jedoch nicht erreicht: In der gesamten vorhandenen Preisgeschichte finden sich ausschließlich Ryanair-Preise.** Die Eurowings- und Condor-Adapter sind Versuche mit im früheren Chat ausdrücklich als geraten eingeräumten Endpunkten.
+Die rechnerische Auswertung, Trip-Trennung in der Historie und die HTML-Erstellung funktionieren mit den gespeicherten und aktuellen Live-Daten. **Die gewünschte airlineübergreifende Marktabdeckung ist weiterhin nicht erreicht: Auch beim Live-Abruf am 24.11.2026 lieferte ausschließlich Ryanair reale Preise (4/4 Hin, 4/4 Rück).** Eurowings (beide Endpunkte) und Condor antworteten reproduzierbar mit `HTTP 403` (WAF/Access Denied). Der Quellenstatus wird nun transparent im Log, in `flight_data.json` und in der Dashboard-Fußzeile ausgewiesen.
 
-Der letzte bekannte Betriebswunsch des Nutzers lautet: **Automatische Abfragen und öffentliche Webseite vorerst abschalten, Code für eine spätere Nutzung behalten.** Das Repository ist laut in dieser Sitzung abgefragten GitHub-Metadaten privat. Ob Workflow und Pages tatsächlich deaktiviert sind, wurde nicht abschließend geprüft. Keinen Workflow zum Testen starten und keine Seite veröffentlichen, solange kein neuer Auftrag dazu vorliegt.
+**Aktueller Betriebswunsch (seit 24.11.2026):** Der zuvor ab Oktober 2026 stillgelegte Tracker soll wieder mit neuen Zeiträumen für **Mai/Juni 2027** laufen (Hauptzeitraum 26.05.–01.06.2027 und Alternative 13.05.–17.05.2027, jeweils genau 4 Nächte). Code, Workflow-Schutz (`concurrency`), Initial-Crawl und Dashboard sind lokal umgesetzt und auf GitHub gepusht. **Hinweis zur Reaktivierung auf GitHub:** Da Workflow und GitHub Pages zuvor im GitHub-UI deaktiviert wurden (und `gh` lokal nicht installiert ist), müssen die Aktivierung des Workflows und ggf. die Pages-Einstellung noch direkt in den GitHub-Repository-Einstellungen bestätigt werden.
 
 ### 0.2 Herkunft von Aussagen
 
@@ -29,16 +29,14 @@ Zugänglich war der lange Verlauf dieses Threads: ursprünglicher Bau in Cowork,
 | --- | --- |
 | Repository | `Moritz2011/flugcrawler` |
 | Standardbranch / lokaler Branch | `main` |
-| Lokaler HEAD und zuletzt abgerufener `origin/main` | `58f9bce5da793d645222ee982b8a5fb30c2bbbe1` |
-| Letzter Commit | Preisupdate vom 09.10.2026, 12:09:37 UTC |
-| Letzte Änderung an `crawler.py` | `3bd5a6118303f22280d4465bd89b0a3e2b98a9ff`, 30.04.2026 |
-| Erster Implementierungscommit | `ada0d31fecba580da94c2241c981670ec07bffa9`, 29.04.2026 |
-| Git-Status vor Erstellung dieser Datei | `working tree clean`; gegenüber `origin/main` weder voraus noch zurück |
-| Verfolgte Projektdateien vor dieser Dokumentation | 6; siehe Abschnitt B |
-| Historie | 164 Tagesstände vom 29.04.2026 bis 09.10.2026, insgesamt 983 Kombinationseinträge |
-| Airlines in sämtlichen gespeicherten Kombinationen | ausschließlich `Ryanair` |
-| Reisefenster im Code | 22.10.2026 bis einschließlich 26.10.2026, mindestens 2 Nächte |
-| Wichtig zum heutigen Datum | Das konfigurierte Reisefenster liegt inzwischen in der Vergangenheit. |
+| Vorheriger Commit vor dem Update am 24.11.2026 | `fd65c77` (Aufnahme `PROJECT_HANDOVER.md`, 14.11.2026); davor `58f9bce` (letztes Okt.-2026-Preisupdate, 09.10.2026) |
+| Aktuelle funktionale Änderung | 24.11.2026: Umstellung auf `TRAVEL_WINDOWS` (Mai/Juni 2027), Trip-Trennung in Historie/Chart, HTTP-Status-Logging, Quellenstatus im Dashboard, atomisches Schreiben, Workflow-`concurrency` |
+| Historische Implementierungscommits | `ada0d31` (29.04.2026), `3bd5a61` (30.04.2026) |
+| Verfolgte Projektdateien | 7 (inkl. `PROJECT_HANDOVER.md`); siehe Abschnitt B |
+| Historie | 165 Tagesstände gesamt: 164 historische Stände (29.04.2026–09.10.2026, Okt.-2026-Reise) + 1 aktueller Stand (24.11.2026, Trip `2027-05-mallorca`) |
+| Airlines in sämtlichen gespeicherten Kombinationen | weiterhin ausschließlich `Ryanair` (Eurowings und Condor am 24.11.2026 jeweils mit `HTTP 403` blockiert) |
+| Aktive Reisefenster im Code (`TRIP_ID = "2027-05-mallorca"`) | Hauptzeitraum 26.05.–01.06.2027 (genau 4 Nächte, 3 Kombis) + Alternative 13.05.–17.05.2027 (genau 4 Nächte, 1 Kombi) |
+| Letzter Live-Bestpreis (24.11.2026) | `2027-05-28` → `2027-06-01` (4 Nächte, Hauptzeitraum): 183,98 EUR (Ryanair hin 71,99 EUR / zurück 111,99 EUR) |
 
 Diese Datei wurde zunächst als Entwurf unversioniert angelegt und auf ausdrücklichen Wunsch des Nutzers am 14. November 2026 ins Git-Repository aufgenommen und gepusht, um dauerhaft als zentrale Wissensbasis erhalten zu bleiben.
 
@@ -56,25 +54,23 @@ Aus dem Gespräch ergeben sich folgende verbindliche beziehungsweise bereits akz
 
 - Strecke Nürnberg – Mallorca und zurück.
 - Die Airline ist egal; entscheidend ist der günstigste Hin-/Rückflug-Gesamtpreis unter den zulässigen Kombinationen.
-- Mindestens zwei Nächte Aufenthalt.
-- Zuletzt vereinbartes statisches Reisefenster: Donnerstag, 22.10.2026, bis Montag, 26.10.2026.
+- **Aktuelle Reisedaten (beauftragt am 24.11.2026, löst das historische Okt.-2026-Fenster ab):**
+  - Hauptzeitraum: `26.05.2027` bis `01.06.2027`, genau **4 Nächte** (3 Kombinationen).
+  - Alternativer Zeitraum: `13.05.2027` bis `17.05.2027`, genau **4 Nächte** (1 Kombination).
+- *(Historisch, abgelöst)* Ursprüngliches Fenster Oktober 2026: erst 22./23.10., später 22.–26.10.2026 mit mindestens 2 Nächten (6 Kombinationen); Historie bleibt in `flight_data.json` archiviert.
 - Automatische tägliche Ausführung; alle zwei Tage wurde anfangs als Alternative besprochen, gewählt wurde täglich.
 - Ausführung unabhängig davon, ob der Mac eingeschaltet ist.
-- HTML-Dashboard mit Tabelle, hervorgehobener günstigster Kombination, Aktualisierungszeit und historischem Preisverlauf.
+- HTML-Dashboard mit Tabelle, hervorgehobener günstigster Kombination, Aktualisierungszeit, Quellenstatus und historischem Preisverlauf.
 - Preistrend mit grünem Abwärts-, rotem Aufwärts- und grauem Gleichbleibend-Indikator.
 - Datumsbereich im Code pflegen; eine interaktive Datumsverwaltung war nicht gewünscht.
 
-Ursprünglich war der Hinflug auf den 22. oder 23. Oktober beschränkt. Später wurde ausdrücklich das gesamte Fenster 22.–26. Oktober mit mindestens zwei Nächten gewünscht. **Die spätere Anforderung gilt:** Damit ist auch 24.10. → 26.10. zulässig.
-
 ### A.3 Aktueller Entwicklungs- und Betriebsstand
 
-Es existiert ein funktionierender kleiner Batchprozess mit Datenspeicherung und statischem Dashboard. Der Nutzer bestätigte zuvor einen grünen Actions-Lauf und eine erreichbare Pages-Seite sowie die erfolgreiche Übernahme der Erweiterungen.
+Es existiert ein aktiv wiederbelebter Python-Batchprozess mit Trip-getrennter Datenspeicherung und statischem HTML-Dashboard für Mai/Juni 2027. Der erste Live-Lauf am 24.11.2026 lieferte vollständige Ryanair-Preise für alle 4 Kombinationen (günstigstes Angebot: 28.05.–01.06.2027 für 183,98 EUR).
 
-Das wichtigste fachliche Defizit ist weiterhin die unvollständige Preisabdeckung. Ein Ergebnis ist der günstigste **von den funktionierenden Quellen gelieferte** Preis, keine nachgewiesene Bestpreisermittlung über alle Airlines und Buchungsportale.
+Das wichtigste fachliche Defizit ist weiterhin die unvollständige Preisabdeckung (Eurowings und Condor blockieren direkte `requests`-Anfragen mit `HTTP 403`). Ein Ergebnis ist daher transparent als günstigster **von den funktionierenden Quellen gelieferter** Preis ausgewiesen.
 
-Aktuell steht die Aufbewahrung des Codes im Vordergrund. Ein Wiederanlauf, neue Reisedaten oder der Wechsel auf einen Datenanbieter sind nicht beauftragt. Die Entwicklung soll später auch von einem anderen KI-Coding-Assistenten, insbesondere Google Antigravity, fortgesetzt werden können.
-
-Ein darüber hinausgehendes langfristiges Produktziel wurde nicht vereinbart.
+Für den automatischen täglichen Betrieb und die Website-Veröffentlichung müssen die zuvor stillgelegten GitHub-Actions- und GitHub-Pages-Einstellungen vom Nutzer in GitHub wieder aktiviert bzw. geprüft werden.
 
 ## B. Technische Architektur
 
@@ -174,36 +170,38 @@ Zeilenangaben beziehen sich auf Commit `58f9bce` und können sich später versch
 
 ### B.5 Konfiguration und Suchsemantik
 
-Die aktuelle Konfiguration ist im Quellcode festgelegt:
+Seit dem 24.11.2026 unterstützt `crawler.py` mehrere konfigurierte Reisezeiträume über `TRAVEL_WINDOWS` sowie eine Trip-Kennung (`TRIP_ID`) zur sauberen Trennung der Preisverläufe:
 
 ```python
-TRAVEL_START = date(2026, 10, 22)
-TRAVEL_END   = date(2026, 10, 26)
-MIN_NIGHTS   = 2
+TRIP_ID    = "2027-05-mallorca"
+TRIP_TITLE = "Mai/Juni 2027"
+
+TRAVEL_WINDOWS = [
+    {"label": "Hauptzeitraum", "start": date(2027, 5, 26), "end": date(2027, 6, 1),  "min_nights": 4, "max_nights": 4},
+    {"label": "Alternative",   "start": date(2027, 5, 13), "end": date(2027, 5, 17), "min_nights": 4, "max_nights": 4},
+]
 ```
 
-`TRAVEL_START` ist der früheste Hinflugtag, `TRAVEL_END` der späteste Rückflugtag. Für jeden Hinflug werden alle Rückflüge ab `Hinflug + MIN_NIGHTS` bis zum Ende des Fensters erzeugt. Nächte sind eine Differenz von Kalenderdaten; Flugzeiten oder tatsächlich am Ziel verbrachte Stunden werden nicht ausgewertet.
+Für jeden Zeitraum erzeugt `build_combinations()` alle zulässigen Kalenderdatumspaare mit `min_nights <= Nächte <= max_nights` und dedupliziert Überschneidungen. Nächte sind eine Differenz von Kalenderdaten.
 
-| Hinflug | Rückflug | Nächte |
-| --- | --- | --- |
-| 22.10.2026 | 24.10.2026 | 2 |
-| 22.10.2026 | 25.10.2026 | 3 |
-| 22.10.2026 | 26.10.2026 | 4 |
-| 23.10.2026 | 25.10.2026 | 2 |
-| 23.10.2026 | 26.10.2026 | 3 |
-| 24.10.2026 | 26.10.2026 | 2 |
+| Zeitraum | Hinflug | Rückflug | Nächte |
+| --- | --- | --- | --- |
+| Hauptzeitraum | Mi 26.05.2027 | So 30.05.2027 | 4 |
+| Hauptzeitraum | Do 27.05.2027 | Mo 31.05.2027 | 4 |
+| Hauptzeitraum | Fr 28.05.2027 | Di 01.06.2027 | 4 |
+| Alternative | Do 13.05.2027 | Mo 17.05.2027 | 4 |
 
-Es werden drei unterschiedliche Hinflugtage und drei unterschiedliche Rückflugtage abgefragt. Die Anfragen werden je Datum wiederverwendet, statt jede Kombination separat vollständig abzufragen.
+Es werden 4 unterschiedliche Hinflugtage (`2027-05-13`, `2027-05-26`, `2027-05-27`, `2027-05-28`) und 4 unterschiedliche Rückflugtage (`2027-05-17`, `2027-05-30`, `2027-05-31`, `2027-06-01`) abgefragt. Im Dashboard werden alternative Termine mit einem dezenten `Alternative`-Badge markiert und gemeinsam nach dem günstigsten Gesamtpreis sortiert.
 
 Weitere Einstellungen:
 
-- Strecke `NUE` / `PMI` ist mehrfach fest in `run()`, `gf_url()` und im HTML-Text hinterlegt.
+- Strecke `NUE` / `PMI` ist fest in `run()`, `gf_url()` und den HTML-Überschriften hinterlegt.
 - Währung `EUR` ist in den Adapterparametern und der Darstellung fest eingebaut.
-- Eurowings-Fallback und Condor übergeben `adults=1`; Eurowings primär `passengerTypes=ADULT`. Ryanair nutzt den FareFinder ohne explizite Reisendenzahl. Das Dashboard bezeichnet Preise als „p.P.“.
-- Gepäck, Sitzplätze, Tarifbedingungen, Zahlungsgebühren, Flugnummern, Tageszeiten und Umstiege sind keine modellierten Auswahlkriterien.
-- Titel und Untertitel enthalten weiterhin hart codiert „Oktober 2026“. Das Ändern allein der Datumskonstanten aktualisiert diese Texte nicht.
-
-Konstanten werden beim Import ausgewertet. Wer in Tests oder späterer Laufzeit nur `TRAVEL_START` ändert, muss abhängige Kombinationen ebenfalls neu berechnen.
+- Titel (`TRIP_TITLE`) und Untertitel (`format_window_summary()`) werden jetzt dynamisch aus der Konfiguration generiert (keine hart codierten „Oktober 2026“-Texte mehr).
+- `ensure_requests()` und die UTF-8-Umkonfiguration laufen erst in `run()` bzw. den Adaptern – ein `import crawler` hat keine Paketinstallations-Nebenwirkungen mehr.
+- `flight_data.json` und `index.html` werden atomisch über `atomic_write_text()` (Temp-Datei + `os.replace`) geschrieben.
+- Dynamische Textwerte im HTML werden über `html.escape()` abgesichert.
+- Neue Einträge in `flight_data.json` speichern zusätzlich `"trip"`, pro Kombination `"window"` sowie `"sources"` (Trefferanzahl und HTTP-/Fehlerstatus je Quelle). `get_trip_dates()` und `get_trends()` filtern auf denselben `TRIP_ID`, sodass die 164 historischen Oktober-2026-Tagesstände vollständig erhalten bleiben, aber das Mai/Juni-2027-Diagramm nicht verfälschen.
 
 ### B.6 Datenmodelle
 
@@ -463,13 +461,12 @@ Es gibt keine konfigurierte Formatierung, keinen Linter, keinen Typprüfer und k
 
 | Thema | Beleg / Auswirkung | Bisheriger Versuch / Zustand |
 | --- | --- | --- |
-| Nur Ryanair liefert beobachtete Daten | Alle 164 gespeicherten Tagesstände enthalten ausschließlich Ryanair. Letzter geprüfter Lauf: Ryanair 3+3 Ergebnisse, Eurowings/Condor jeweils 0+0. | Zweiter Eurowings-Endpunkt und toleranteres Condor-Parsen ergänzten keinen nachgewiesenen Erfolg. Offen. |
-| Grüner Workflow ist kein Vollständigkeitsnachweis | Adapter unterdrücken viele Fehler; auch ohne Preise endet `run()` regulär. | Erfolgsmeldungen im Gespräch waren teilweise zu weitgehend. Eine Quellenstatusprüfung ist nicht implementiert. |
-| Andere HTTP-Statuscodes bleiben still | `if r.status_code == 200` ohne aussagekräftigen `else`-Zweig. | Grund für null Treffer aus den Logs nicht bestimmbar. Offen. |
-| UTC-Zeitplan entspricht nicht ganzjährig 08:00 Berlin | Fester Cronwert, kein DST-Ausgleich; YAML-Kommentare sind unzutreffend. | Nicht geändert. |
-| Reisefenster abgelaufen | 22.–26.10.2026 ist zum Dokumentationsdatum vorbei; kein Schutz vor vergangenen Reisedaten. | Vor einem späteren Wiederanlauf neue Daten vereinbaren. |
-| Feste Datums- und Routentexte | HTML-Titel, Untertitel und Suchlink bleiben unabhängig von neuen Konstanten teilweise fest. | Neue Suche würde zusätzliche Anpassungen verlangen. |
-| Unvollständiges Preis-/Flugmodell | Nur Tagesminimum, Airline und Summe; keine Flugnummer, Gepäck-/Tarifdaten oder belastbare Buchungsreferenz. | Das Dashboard ist ein Preisindikator, keine verifizierte Buchungsübersicht. |
+| Nur Ryanair liefert beobachtete Daten | Alle 164 historischen Stände (Okt. 2026) und der Live-Lauf am 24.11.2026 (Mai/Juni 2027) enthalten ausschließlich Ryanair. Am 24.11.2026 meldeten Eurowings (beide Endpunkte) und Condor durchgehend `HTTP 403` (WAF/Bot-Block). | HTTP-Status wird jetzt geloggt und im Dashboard angezeigt. Für echte Eurowings-/Condor-Abdeckung wäre ein anderer Datenanbieter oder Browser-Ansatz nötig. **Offen.** |
+| Quellenstatus / stille Nicht-200-Statuscodes | **Behoben (24.11.2026):** Nicht-200-Statuscodes werden jetzt geloggt, unter `sources` in `flight_data.json` gespeichert und in der Dashboard-Fußzeile angezeigt. | Umgesetzt und im Live-Lauf am 24.11.2026 verifiziert. |
+| UTC-Zeitplan-Kommentar & `concurrency` | **Behoben (24.11.2026):** YAML-Kommentar korrigiert (`06:00 UTC = 08:00 MESZ / 07:00 MEZ`) und `concurrency`-Gruppe ergänzt. | `0 6 * * *` bleibt fixer UTC-Cron; kein DST-Wechsel im Cron selbst. |
+| Reisefenster abgelaufen & feste „Oktober 2026“-Texte | **Behoben (24.11.2026):** Umstellung auf `TRAVEL_WINDOWS` (Mai/Juni 2027), dynamischen Titel/Untertitel und `TRIP_ID`-Trennung für Chart/Trends. | Historische Okt.-2026-Daten bleiben in `flight_data.json` erhalten. |
+| Import-Nebenwirkungen, nicht-atomisches Schreiben, HTML-Escaping | **Behoben (24.11.2026):** `ensure_requests()` erst bei Bedarf, `atomic_write_text()` via `os.replace`, `html.escape()` für dynamische Felder. | Mit direkten Modulimport-Unit-Checks geprüft. |
+| Unvollständiges Preis-/Flugmodell | Nur Tagesminimum, Airline und Summe; keine Flugnummer, Gepäck-/Tarifdaten oder belastbare Buchungsreferenz. | Das Dashboard bleibt ein Preisindikator; Verifikation erfolgt über den Suchlink beim Anbieter. |
 
 ### F.2 Aus dem Code ableitbare Robustheitsgrenzen
 
@@ -586,6 +583,25 @@ Die zwischenzeitlich irrtümlich angelegte zusätzliche Kopie wurde aus dem Assi
 Die erneute Analyse bezieht sich auf das synchronisierte NAS-Repository. Es wurden 16 isolierte Funktionsprüfungen am dortigen Quellcode erfolgreich durchgeführt. Jetzt wird ausschließlich `PROJECT_HANDOVER.md` angelegt und anschließend auf Vollständigkeit sowie unveränderte übrige Dateien geprüft.
 
 Die nächsten tatsächlichen Schritte bestimmt der Nutzer. Es gibt keinen offenen begonnenen Code-Patch und keine erteilte Freigabe zum Wiederaktivieren der Automatisierung. Der sichtbare Gesprächsstand ist hierfür nachvollziehbar; nicht sichtbare frühere Chats oder nicht zugängliche GitHub-Einstellungen bleiben ausdrücklich unberücksichtigt.
+
+### H.5 Wiederaktivierung und Mai/Juni-2027-Umstellung (24.11.2026)
+
+Auf ausdrücklichen Nutzerauftrag wurde der Crawler am 24.11.2026 für zwei neue Zeiträume im Mai/Juni 2027 umgestellt und lokal live ausgeführt:
+
+- **Konfiguration:** `TRIP_ID = "2027-05-mallorca"`, Hauptzeitraum `26.05.–01.06.2027` (genau 4 Nächte → 3 Kombinationen) + Alternative `13.05.–17.05.2027` (genau 4 Nächte → 1 Kombination).
+- **Technische Verbesserungen:** Multi-Window-Support (`TRAVEL_WINDOWS`), dynamischer Dashboard-Titel/Untertitel, `Alternative`-Badge, `TRIP_ID`-Trennung für Chart & Trends (alte 164 Okt.-2026-Einträge bleiben unangetastet), HTTP-Status-Logging + `sources`-Block in JSON & Dashboard-Fußzeile, `ensure_requests()` ohne Import-Nebenwirkungen, atomisches Schreiben via `os.replace`, `html.escape()` sowie `concurrency`-Gruppe und korrigierter Zeitzonenkommentar in `.github/workflows/crawler.yml`.
+- **Verifizierter Live-Lauf (24.11.2026, 20:32 CET):**
+  - Ryanair: 4/4 Hin- und 4/4 Rückflüge (HTTP 200).
+  - Eurowings & Condor: 0 Ergebnisse (beide durchgehend HTTP 403).
+  - Ergebnisse (alle Ryanair, p.P.):
+    1. `Fr 28.05.2027 → Di 01.06.2027` (4 Nächte, Hauptzeitraum): **183,98 EUR** (71,99 + 111,99 EUR) — Bestes Angebot
+    2. `Do 13.05.2027 → Mo 17.05.2027` (4 Nächte, Alternative): **268,43 EUR** (141,99 + 126,44 EUR)
+    3. `Do 27.05.2027 → Mo 31.05.2027` (4 Nächte, Hauptzeitraum): **285,33 EUR** (117,99 + 167,34 EUR)
+    4. `Mi 26.05.2027 → So 30.05.2027` (4 Nächte, Hauptzeitraum): **398,88 EUR** (117,99 + 280,89 EUR)
+- **Noch offen im GitHub-UI (manuelle Prüfung durch Nutzer):**
+  1. Unter **Actions → ✈️ Flugpreis-Crawler** prüfen, ob der Workflow wieder aktiviert ist (ggf. „Enable workflow“ klicken).
+  2. Unter **Settings → Pages** prüfen, ob GitHub Pages für Branch `main` / `/ (root)` wieder aktiv ist (Hinweis: Bei privatem Repository benötigt GitHub Pages einen kostenpflichtigen GitHub-Plan; im Free-Plan ist Pages nur bei öffentlichem Repository verfügbar).
+  3. Weiterhin offen: Validierte Datenquelle für Eurowings/Condor bzw. airlineübergreifende Abdeckung.
 
 ## I. Installation, Start und Entwicklungsumgebung
 
