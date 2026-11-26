@@ -12452,5 +12452,87 @@
       }
     },
     "timestamp": "2026-11-25T16:32:40.793503"
+  },
+  "2026-11-26": {
+    "trip": "2027-05-mallorca",
+    "combos": [
+      {
+        "out_date": "2027-05-28",
+        "ret_date": "2027-06-01",
+        "nights": 4,
+        "window": "Hauptzeitraum",
+        "out_price": 77.94,
+        "out_airline": "Ryanair",
+        "ret_price": 110.0,
+        "ret_airline": "Eurowings",
+        "total": 187.94
+      },
+      {
+        "out_date": "2027-05-27",
+        "ret_date": "2027-05-31",
+        "nights": 4,
+        "window": "Hauptzeitraum",
+        "out_price": 117.99,
+        "out_airline": "Ryanair",
+        "ret_price": 145.0,
+        "ret_airline": "Eurowings",
+        "total": 262.99
+      },
+      {
+        "out_date": "2027-05-13",
+        "ret_date": "2027-05-17",
+        "nights": 4,
+        "window": "Alternative",
+        "out_price": 141.99,
+        "out_airline": "Ryanair",
+        "ret_price": 126.44,
+        "ret_airline": "Ryanair",
+        "total": 268.43
+      },
+      {
+        "out_date": "2027-05-26",
+        "ret_date": "2027-05-30",
+        "nights": 4,
+        "window": "Hauptzeitraum",
+        "out_price": 104.99,
+        "out_airline": "Ryanair",
+        "ret_price": 265.0,
+        "ret_airline": "Eurowings",
+        "total": 369.99
+      }
+    ],
+    "best": {
+      "out_date": "2027-05-28",
+      "ret_date": "2027-06-01",
+      "nights": 4,
+      "window": "Hauptzeitraum",
+      "out_price": 77.94,
+      "out_airline": "Ryanair",
+      "ret_price": 110.0,
+      "ret_airline": "Eurowings",
+      "total": 187.94
+    },
+    "sources": {
+      "Google Flights Direktflüge": {
+        "out": 2,
+        "out_total": 4,
+        "ret": 3,
+        "ret_total": 4,
+        "airlines": [
+          "Condor",
+          "Eurowings",
+          "Ryanair"
+        ],
+        "issues": []
+      },
+      "Ryanair API": {
+        "out": 4,
+        "out_total": 4,
+        "ret": 4,
+        "ret_total": 4,
+        "issues": []
+      }
+    },
+    "timestamp": "2026-11-26T16:05:04.498797"
   }
 }
